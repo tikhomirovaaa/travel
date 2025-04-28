@@ -1,0 +1,34 @@
+[
+    {
+      "model": "taggit.tag",
+      "pk": 1,
+      "fields": {
+        "name": "горы",
+        "slug": "mountains"
+      }
+    },
+    {
+      "model": "taggit.tag",
+      "pk": 2,
+      "fields": {
+        "name": "море",
+        "slug": "sea"
+      }
+    },
+    {
+      "model": "taggit.tag",
+      "pk": 3,
+      "fields": {
+        "name": "город",
+        "slug": "city"
+      }
+    },
+    {
+      "model": "taggit.tag",
+      "pk": 4,
+      "fields": {
+        "name": "природа",
+        "slug": "nature"
+      }
+    }
+  ]

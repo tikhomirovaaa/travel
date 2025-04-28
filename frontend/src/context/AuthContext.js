@@ -1,5 +1,7 @@
-import { createContext, useState, useEffect } from 'react';
+// src/context/AuthContext.js
+import { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { getCurrentUser } from '../api';
 
 export const AuthContext = createContext();
 
@@ -8,29 +10,37 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.get('http://localhost:8000/api/auth/users/me/', {
-        headers: { Authorization: `Token ${token}` }
-      })
-      .then(res => setUser(res.data))
-      .catch(() => localStorage.removeItem('token'))
-      .finally(() => setLoading(false));
-    } else {
+    const fetchUser = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await getCurrentUser();
+          setUser(response.data);
+        } catch (error) {
+          localStorage.removeItem('token');
+        }
+      }
       setLoading(false);
-    }
+    };
+
+    fetchUser();
   }, []);
 
   const login = async (credentials) => {
-    const res = await axios.post('http://localhost:8000/api/auth/token/login/', credentials);
-    localStorage.setItem('token', res.data.auth_token);
-    const userRes = await axios.get('http://localhost:8000/api/auth/users/me/', {
-      headers: { Authorization: `Token ${res.data.auth_token}` }
-    });
-    setUser(userRes.data);
+    const response = await axios.post('http://localhost:8000/api/auth/token/login/', credentials);
+    localStorage.setItem('token', response.data.auth_token);
+    const userResponse = await getCurrentUser();
+    setUser(userResponse.data);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await axios.post('http://localhost:8000/api/auth/token/logout/', {}, {
+        headers: { Authorization: `Token ${localStorage.getItem('token')}` }
+      });
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
     localStorage.removeItem('token');
     setUser(null);
   };
@@ -40,4 +50,9 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+// Добавляем хук useAuth для удобного использования контекста
+export const useAuth = () => {
+  return useContext(AuthContext);
 };

@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Token ${response.data.auth_token}`;
       const userResponse = await getCurrentUser();
       setUser(userResponse.data);
+      window.location.reload();
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);

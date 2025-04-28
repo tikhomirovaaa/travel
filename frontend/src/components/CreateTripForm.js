@@ -15,11 +15,9 @@ import {
   Alert
 } from '@mui/material';
 import { PhotoCamera } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
 import { createTrip } from '../api';
 
 export default function CreateTripForm({ open, handleClose, onTripCreated }) {
-  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
@@ -61,9 +59,10 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
       };
 
       const response = await createTrip(tripData);
-      onTripCreated(response);
+      onTripCreated(response.data); // Исправлено: передаем response.data
       handleClose();
       resetForm();
+      window.location.reload(); // Автоматическое обновление страницы
     } catch (error) {
       console.error('Error creating trip:', error);
       setError(error.response?.data?.detail || 'Ошибка при создании поста');

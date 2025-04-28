@@ -15,6 +15,18 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Обработчик ошибок
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth endpoints
 export const login = (credentials) => api.post('auth/token/login/', credentials);
 export const registerUser = (data) => api.post('auth/users/', data);
@@ -22,7 +34,10 @@ export const logout = () => api.post('auth/token/logout/');
 
 // Trips
 export const getTrips = (params = {}) => api.get('trips/', { params });
-export const getTrip = (id) => api.get(`trips/${id}/`);
+export const getTrip = (id) => {
+  if (!id) throw new Error('Trip ID is required');
+  return api.get(`trips/${id}/`);
+};
 export const createTrip = (data) => {
   const formData = new FormData();
   Object.keys(data).forEach(key => {

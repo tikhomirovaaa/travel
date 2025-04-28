@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Container, 
-  Typography, 
-  Card, 
-  CardMedia, 
-  CardContent, 
+  Typography,  
   Grid, 
-  Button,
   CircularProgress,
   Pagination,
-  Box
+  Box,
+  Button,
+  Paper
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { getTrips, addToWishlist } from '../api';
 import TripCard from '../components/TripCard';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
+  const { user, authChecked } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -36,8 +36,10 @@ export default function Home() {
       }
     };
 
-    fetchTrips();
-  }, [page]);
+    if (authChecked) {
+      fetchTrips();
+    }
+  }, [page, authChecked]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
@@ -49,8 +51,17 @@ export default function Home() {
       alert('Путешествие добавлено в ваш список желаний!');
     } catch (error) {
       console.error('Ошибка при добавлении в список желаний:', error);
+      alert('Для добавления в список желаний необходимо авторизоваться');
     }
   };
+
+  if (!authChecked) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4, textAlign: 'center' }}>
+        <CircularProgress size={60} />
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -68,6 +79,35 @@ export default function Home() {
         Последние путешествия
       </Typography>
 
+      {!user && (
+        <Paper elevation={3} sx={{ p: 4, mb: 4, textAlign: 'center' }}>
+          <Typography variant="h5" gutterBottom>
+            Присоединяйтесь к нашему сообществу путешественников!
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Зарегистрируйтесь, чтобы сохранять понравившиеся путешествия и создавать свои собственные маршруты.
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+            <Button 
+              variant="contained" 
+              component={Link} 
+              to="/register"
+              size="large"
+            >
+              Зарегистрироваться
+            </Button>
+            <Button 
+              variant="outlined" 
+              component={Link} 
+              to="/login"
+              size="large"
+            >
+              Войти
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', margin: '40px 0' }}>
           <CircularProgress size={60} />
@@ -79,7 +119,7 @@ export default function Home() {
               <Grid item xs={12} sm={6} md={4} key={trip.id}>
                 <TripCard 
                   trip={trip} 
-                  onAddToWishlist={handleAddToWishlist}
+                  onAddToWishlist={user ? handleAddToWishlist : null}
                 />
               </Grid>
             ))}

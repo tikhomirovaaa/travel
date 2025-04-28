@@ -10,18 +10,24 @@ import {
   Chip,
   Typography,
   Avatar,
-  IconButton
+  IconButton,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { PhotoCamera } from '@mui/icons-material';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { createTrip } from '../api';
 
 export default function CreateTripForm({ open, handleClose, onTripCreated }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState('');
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -43,29 +49,46 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
   };
 
   const handleSubmit = async () => {
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('image', image);
-    tags.forEach(tag => formData.append('tags', tag));
-
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:8000/api/trips/', formData, {
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      onTripCreated(response.data);
+      setLoading(true);
+      setError(null);
+
+      const tripData = {
+        title,
+        description,
+        image,
+        tags
+      };
+
+      const response = await createTrip(tripData);
+      onTripCreated(response);
       handleClose();
+      resetForm();
     } catch (error) {
       console.error('Error creating trip:', error);
+      setError(error.response?.data?.detail || 'Ошибка при создании поста');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setImage(null);
+    setPreview('');
+    setTags([]);
+    setTagInput('');
+    setError(null);
+  };
+
+  const handleCloseForm = () => {
+    resetForm();
+    handleClose();
+  };
+
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
+    <Dialog open={open} onClose={handleCloseForm} fullWidth maxWidth="md">
       <DialogTitle>Создать новое путешествие</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
@@ -74,6 +97,7 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
             fullWidth
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            required
           />
           
           <TextField
@@ -83,6 +107,7 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
             fullWidth
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            required
           />
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -93,6 +118,8 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
                 hidden 
                 accept="image/*" 
                 onChange={handleImageChange}
+                id="trip-image-input"
+                name="trip-image"
               />
             </IconButton>
             <Typography>{image ? image.name : 'Выберите изображение'}</Typography>
@@ -129,11 +156,26 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose}>Отмена</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!title || !description || !image}>
-          Опубликовать
+        <Button onClick={handleCloseForm}>Отмена</Button>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained" 
+          disabled={!title || !description || !image || loading}
+        >
+          {loading ? 'Публикация...' : 'Опубликовать'}
         </Button>
       </DialogActions>
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Dialog>
   );
 }

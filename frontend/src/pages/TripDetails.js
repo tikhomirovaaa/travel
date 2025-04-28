@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   Container, 
@@ -18,7 +18,7 @@ import {
   ListItemText,
   CircularProgress
 } from '@mui/material';
-import { Favorite, FavoriteBorder, Comment, Bookmark, BookmarkBorder } from '@mui/icons-material';
+import { Favorite, FavoriteBorder, Bookmark, BookmarkBorder } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { 
   getTrip, 

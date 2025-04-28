@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Container, 
   Typography, 
@@ -14,71 +14,67 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress
+  CircularProgress,
+  Snackbar,
+  Alert
 } from '@mui/material';
-import { AuthContext } from '../context/AuthContext';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { getWishlist, removeFromWishlist, downloadWishlist } from '../api';
 
 export default function WishList() {
-  const { user } = useContext(AuthContext);
+  const { user, authChecked } = useAuth();
   const [wishlist, setWishlist] = useState([]);
   const [selectedTrips, setSelectedTrips] = useState([]);
   const [openDownloadDialog, setOpenDownloadDialog] = useState(false);
   const [format, setFormat] = useState('pdf');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (user) {
+    if (authChecked && user) {
       fetchWishlist();
+    } else if (authChecked) {
+      setLoading(false);
     }
-  }, [user]);
+  }, [user, authChecked]);
 
   const fetchWishlist = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8000/api/wishlist/', {
-        headers: { Authorization: `Token ${localStorage.getItem('token')}` }
-      });
+      setError(null);
+      const response = await getWishlist();
       setWishlist(response.data);
-    } catch (error) {
-      console.error('Error fetching wishlist:', error);
+    } catch (err) {
+      console.error('Ошибка загрузки списка:', err);
+      setError(err.response?.data?.detail || 'Не удалось загрузить список');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSelectTrip = (tripId) => {
-    if (selectedTrips.includes(tripId)) {
-      setSelectedTrips(selectedTrips.filter(id => id !== tripId));
-    } else {
-      setSelectedTrips([...selectedTrips, tripId]);
-    }
+    setSelectedTrips(prev => 
+      prev.includes(tripId) 
+        ? prev.filter(id => id !== tripId) 
+        : [...prev, tripId]
+    );
   };
 
   const handleRemoveFromWishlist = async (wishlistId) => {
     try {
-      await axios.delete(`http://localhost:8000/api/wishlist/${wishlistId}/`, {
-        headers: { Authorization: `Token ${localStorage.getItem('token')}` }
-      });
-      setWishlist(wishlist.filter(item => item.id !== wishlistId));
-      setSelectedTrips(selectedTrips.filter(id => id !== wishlistId));
-    } catch (error) {
-      console.error('Error removing from wishlist:', error);
+      await removeFromWishlist(wishlistId);
+      setWishlist(prev => prev.filter(item => item.id !== wishlistId));
+      setSelectedTrips(prev => prev.filter(id => id !== wishlistId));
+    } catch (err) {
+      console.error('Ошибка удаления:', err);
+      setError('Не удалось удалить из списка');
     }
   };
 
   const handleDownload = async () => {
     try {
-      const response = await axios.post(
-        'http://localhost:8000/api/wishlist/download/',
-        { trip_ids: selectedTrips, format },
-        {
-          headers: { Authorization: `Token ${localStorage.getItem('token')}` },
-          responseType: format === 'pdf' ? 'blob' : 'text'
-        }
-      );
-
+      const response = await downloadWishlist(selectedTrips, format);
       const url = window.URL.createObjectURL(
         new Blob([response.data], { type: format === 'pdf' ? 'application/pdf' : 'text/plain' })
       );
@@ -88,19 +84,35 @@ export default function WishList() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-
       setOpenDownloadDialog(false);
-    } catch (error) {
-      console.error('Error downloading wishlist:', error);
+    } catch (err) {
+      console.error('Ошибка загрузки:', err);
+      setError('Не удалось скачать список');
     }
   };
+
+  if (!authChecked) {
+    return (
+      <Container sx={{ py: 4, textAlign: 'center' }}>
+        <CircularProgress size={60} />
+      </Container>
+    );
+  }
 
   if (!user) {
     return (
       <Container sx={{ py: 4, textAlign: 'center' }}>
-        <Typography variant="h5">
+        <Typography variant="h5" gutterBottom>
           Пожалуйста, войдите в систему, чтобы просмотреть свой список желаний
         </Typography>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/login"
+          sx={{ mt: 2 }}
+        >
+          Войти
+        </Button>
       </Container>
     );
   }
@@ -109,6 +121,9 @@ export default function WishList() {
     return (
       <Container sx={{ py: 4, textAlign: 'center' }}>
         <CircularProgress size={60} />
+        <Typography variant="body1" sx={{ mt: 2 }}>
+          Загрузка вашего списка...
+        </Typography>
       </Container>
     );
   }
@@ -117,10 +132,33 @@ export default function WishList() {
     <Container sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Мой список желаний</Typography>
       
+      {error && (
+        <Snackbar 
+          open={!!error} 
+          autoHideDuration={6000} 
+          onClose={() => setError(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        </Snackbar>
+      )}
+      
       {wishlist.length === 0 ? (
-        <Typography variant="h6" sx={{ textAlign: 'center', mt: 4 }}>
-          Ваш список желаний пуст
-        </Typography>
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Вы пока еще ничего не добавляли в список желаний
+          </Typography>
+          <Button 
+            variant="contained" 
+            component={Link} 
+            to="/trips"
+            sx={{ mt: 2 }}
+          >
+            Посмотреть путешествия
+          </Button>
+        </Box>
       ) : (
         <>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
@@ -137,17 +175,17 @@ export default function WishList() {
           <Grid container spacing={4}>
             {wishlist.map(item => (
               <Grid item xs={12} sm={6} md={4} key={item.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                   <Checkbox
                     checked={selectedTrips.includes(item.trip.id)}
                     onChange={() => handleSelectTrip(item.trip.id)}
-                    sx={{ position: 'absolute', zIndex: 1 }}
+                    sx={{ position: 'absolute', zIndex: 1, right: 8, top: 8 }}
                   />
                   
                   <CardMedia
                     component={Link}
                     to={`/trips/${item.trip.id}`}
-                    image={`http://localhost:8000${item.trip.image}`}
+                    image={item.trip.image ? `http://localhost:8000${item.trip.image}` : '/placeholder.jpg'}
                     height="200"
                   />
                   
@@ -160,7 +198,8 @@ export default function WishList() {
                       sx={{ 
                         textDecoration: 'none', 
                         color: 'inherit',
-                        '&:hover': { color: 'primary.main' }
+                        '&:hover': { color: 'primary.main' },
+                        display: 'block'
                       }}
                     >
                       {item.trip.title}

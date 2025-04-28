@@ -1,10 +1,24 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'development' 
-    ? 'http://localhost:8000/api/' 
-    : '/api/',
+  baseURL: 'http://localhost:8000/api/',
 });
+
+// Добавляем интерцептор для автоматической вставки токена
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Token ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Auth endpoints
+export const login = (credentials) => api.post('auth/token/login/', credentials);
+export const registerUser = (data) => api.post('auth/users/', data);
+export const logout = () => api.post('auth/token/logout/');
 
 // Trips
 export const getTrips = (params = {}) => api.get('trips/', { params });
@@ -14,7 +28,7 @@ export const createTrip = (data) => {
   Object.keys(data).forEach(key => {
     if (key === 'tags') {
       data.tags.forEach(tag => formData.append('tags', tag));
-    } else {
+    } else if (data[key] !== null && data[key] !== undefined) {
       formData.append(key, data[key]);
     }
   });
@@ -44,11 +58,6 @@ export const updateUser = (data) => {
   });
 };
 
-// Auth
-export const login = (credentials) => api.post('auth/token/login/', credentials);
-export const registerUser = (data) => api.post('auth/users/', data);
-export const logout = () => api.post('auth/token/logout/');
-
 // Wishlist
 export const getWishlist = () => api.get('wishlist/');
 export const addToWishlist = (tripId) => api.post('wishlist/', { trip: tripId });
@@ -57,11 +66,5 @@ export const downloadWishlist = (tripIds, format) =>
   api.post('wishlist/download/', { trip_ids: tripIds, format }, { 
     responseType: format === 'pdf' ? 'blob' : 'text' 
   });
-
-// Subscriptions
-export const getSubscriptions = () => api.get('subscriptions/');
-export const subscribe = (userId) => api.post('subscriptions/', { target_user: userId });
-export const unsubscribe = (id) => api.delete(`subscriptions/${id}/`);
-export const getSubscriptionTrips = () => api.get('subscription-trips/');
 
 export default api;

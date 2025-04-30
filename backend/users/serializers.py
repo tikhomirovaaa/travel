@@ -25,6 +25,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'bio': {'required': False},
         }
 
+    def to_internal_value(self, data):
+        if 'avatar' in data and isinstance(data['avatar'], str) and data['avatar'].startswith('http'):
+            data.pop('avatar')
+        return super().to_internal_value(data)
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     target_user = UserSerializer(read_only=True)
     

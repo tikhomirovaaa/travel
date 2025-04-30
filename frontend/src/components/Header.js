@@ -13,10 +13,6 @@ export default function Header() {
     navigate('/login');
   };
 
-  const handleTripCreated = (newTrip) => {
-    navigate(`/trips/${newTrip.id}`);
-  };
-
   return (
     <>
       <AppBar position="static">
@@ -60,7 +56,6 @@ export default function Header() {
       <CreateTripForm 
         open={openCreateTrip} 
         handleClose={() => setOpenCreateTrip(false)} 
-        onTripCreated={handleTripCreated}
       />
     </>
   );

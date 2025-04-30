@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
+from rest_framework import serializers
 from .models import User, Subscription
 from .serializers import UserSerializer, SubscriptionSerializer, UserUpdateSerializer
 from django.shortcuts import get_object_or_404
@@ -16,7 +17,12 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = self.get_serializer(request.user)
             return Response(serializer.data)
         elif request.method == 'PUT':
-            serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+            serializer = UserUpdateSerializer(
+                request.user, 
+                data=request.data, 
+                partial=True,
+                context={'request': request}
+            )
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
@@ -31,4 +37,6 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         target_user = get_object_or_404(User, id=self.request.data.get('target_user'))
+        if Subscription.objects.filter(subscriber=self.request.user, target_user=target_user).exists():
+            raise serializers.ValidationError({"detail": "You are already subscribed to this user"})
         serializer.save(subscriber=self.request.user, target_user=target_user)

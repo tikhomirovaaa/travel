@@ -13,11 +13,13 @@ import {
   DialogTitle,
   DialogActions,
   DialogContent,
-  TextField
+  TextField,
+  CircularProgress
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import TripCard from '../components/TripCard';
+import { updateUser } from '../api';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -53,10 +55,12 @@ export default function Profile() {
   });
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        setLoading(true);
         const userRes = await axios.get(`http://localhost:8000/api/users/?username=${username}`);
         setProfileUser(userRes.data[0]);
         setEditData({
@@ -74,6 +78,8 @@ export default function Profile() {
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
+      } finally {
+        setLoading(false);
       }
     };
     
@@ -115,7 +121,7 @@ export default function Profile() {
 
   const handleSaveProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
+      setLoading(true);
       const formData = new FormData();
       formData.append('username', editData.username);
       formData.append('bio', editData.bio);
@@ -123,32 +129,31 @@ export default function Profile() {
         formData.append('avatar', avatarFile);
       }
       
-      await axios.put(`http://localhost:8000/api/users/me/`, formData, {
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      setProfileUser({
-        ...profileUser,
-        username: editData.username,
-        bio: editData.bio,
-        avatar: avatarPreview
-      });
+      const updatedUser = await updateUser(formData);
+      setProfileUser(updatedUser.data);
       setOpenEdit(false);
     } catch (error) {
       console.error('Error updating profile:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!profileUser) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  if (!profileUser) return <div>Пользователь не найден</div>;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, gap: 4 }}>
         <Avatar 
-          src={avatarPreview || `http://localhost:8000${profileUser.avatar}`} 
+          src={avatarPreview || (profileUser.avatar ? `http://localhost:8000${profileUser.avatar}` : '')} 
           sx={{ width: 120, height: 120 }}
         />
         
@@ -213,10 +218,18 @@ export default function Profile() {
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar src={avatarPreview} sx={{ width: 80, height: 80 }} />
+              <Avatar 
+                src={avatarPreview || (profileUser.avatar ? `http://localhost:8000${profileUser.avatar}` : '')} 
+                sx={{ width: 80, height: 80 }} 
+              />
               <Button variant="contained" component="label">
                 Изменить фото
-                <input type="file" hidden accept="image/*" onChange={handleImageChange} />
+                <input 
+                  type="file" 
+                  hidden 
+                  accept="image/*" 
+                  onChange={handleImageChange} 
+                />
               </Button>
             </Box>
             
@@ -239,7 +252,13 @@ export default function Profile() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenEdit(false)}>Отмена</Button>
-          <Button onClick={handleSaveProfile} variant="contained">Сохранить</Button>
+          <Button 
+            onClick={handleSaveProfile} 
+            variant="contained"
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Сохранить'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

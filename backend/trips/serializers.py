@@ -3,6 +3,16 @@ from .models import Trip, Location, Wishlist, Comment
 from taggit.serializers import TagListSerializerField, TaggitSerializer
 from users.serializers import UserSerializer
 
+class PDFDownloadSerializer(serializers.Serializer):
+    trip_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=True
+    )
+    format = serializers.ChoiceField(
+        choices=['pdf', 'txt'],
+        required=True
+    )
+
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
@@ -37,18 +47,12 @@ class TripSerializer(TaggitSerializer, serializers.ModelSerializer):
         return False
 
 class WishlistSerializer(serializers.ModelSerializer):
-    trip = TripSerializer(read_only=True)
-    
     class Meta:
         model = Wishlist
-        fields = ['id', 'trip', 'notes']
+        fields = ['id', 'user', 'trip', 'notes', 'created_at']
+        read_only_fields = ['user', 'created_at']
 
-class PDFDownloadSerializer(serializers.Serializer):
-    trip_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        help_text="List of trip IDs to include in the wishlist"
-    )
-    format = serializers.ChoiceField(
-        choices=['pdf', 'txt'],
-        help_text="Output format for the wishlist"
-    )
+class WishlistCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wishlist
+        fields = ['trip', 'notes']

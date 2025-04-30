@@ -6,7 +6,7 @@ from reportlab.pdfgen import canvas
 from io import BytesIO
 from django.shortcuts import get_object_or_404
 from .models import Trip, Wishlist, Comment
-from .serializers import TripSerializer, WishlistSerializer, PDFDownloadSerializer, CommentSerializer
+from .serializers import TripSerializer, WishlistSerializer, WishlistCreateSerializer, PDFDownloadSerializer, CommentSerializer
 from users.models import User
 
 class TripViewSet(viewsets.ModelViewSet):
@@ -38,12 +38,18 @@ class TripViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# trips/views.py
 class WishlistViewSet(viewsets.ModelViewSet):
     serializer_class = WishlistSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return WishlistCreateSerializer
+        return WishlistSerializer
+
     def get_queryset(self):
-        return Wishlist.objects.filter(user=self.request.user)
+        return Wishlist.objects.filter(user=self.request.user).select_related('trip')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

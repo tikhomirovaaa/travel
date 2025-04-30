@@ -4,7 +4,6 @@ const api = axios.create({
   baseURL: 'http://localhost:8000/api/',
 });
 
-// Добавляем интерцептор для автоматической вставки токена
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -15,7 +14,6 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Обработчик ошибок
 api.interceptors.response.use(
   response => response,
   error => {
@@ -27,17 +25,11 @@ api.interceptors.response.use(
   }
 );
 
-// Auth endpoints
 export const login = (credentials) => api.post('auth/token/login/', credentials);
 export const registerUser = (data) => api.post('auth/users/', data);
 export const logout = () => api.post('auth/token/logout/');
-
-// Trips
 export const getTrips = (params = {}) => api.get('trips/', { params });
-export const getTrip = (id) => {
-  if (!id) throw new Error('Trip ID is required');
-  return api.get(`trips/${id}/`);
-};
+export const getTrip = (id) => api.get(`trips/${id}/`);
 export const createTrip = (data) => {
   const formData = new FormData();
   Object.keys(data).forEach(key => {
@@ -55,8 +47,6 @@ export const createTrip = (data) => {
 };
 export const likeTrip = (id) => api.post(`trips/${id}/like/`);
 export const commentTrip = (id, text) => api.post(`trips/${id}/comment/`, { text });
-
-// Users
 export const getUser = (username) => api.get(`users/?username=${username}`);
 export const getCurrentUser = () => api.get('users/me/');
 export const updateUser = (data) => {
@@ -72,10 +62,13 @@ export const updateUser = (data) => {
     }
   });
 };
-
-// Wishlist
 export const getWishlist = () => api.get('wishlist/');
-export const addToWishlist = (tripId) => api.post('wishlist/', { trip: tripId });
+export const addToWishlist = (tripId, notes = '') => {
+  return api.post('wishlist/', {
+    trip: tripId,
+    notes: notes
+  });
+};
 export const removeFromWishlist = (id) => api.delete(`wishlist/${id}/`);
 export const downloadWishlist = (tripIds, format) => 
   api.post('wishlist/download/', { trip_ids: tripIds, format }, { 

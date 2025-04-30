@@ -16,8 +16,9 @@ import {
 } from '@mui/material';
 import { PhotoCamera } from '@mui/icons-material';
 import { createTrip } from '../api';
+import { useNavigate } from 'react-router-dom';
 
-export default function CreateTripForm({ open, handleClose, onTripCreated }) {
+export default function CreateTripForm({ open, handleClose }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
@@ -26,6 +27,7 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -59,10 +61,9 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
       };
 
       const response = await createTrip(tripData);
-      onTripCreated(response.data); // Исправлено: передаем response.data
       handleClose();
       resetForm();
-      window.location.reload(); // Автоматическое обновление страницы
+      navigate(`/trips/${response.data.id}`);
     } catch (error) {
       console.error('Error creating trip:', error);
       setError(error.response?.data?.detail || 'Ошибка при создании поста');

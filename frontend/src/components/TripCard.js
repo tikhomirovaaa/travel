@@ -12,12 +12,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { Favorite, FavoriteBorder, Comment, Bookmark, BookmarkBorder } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { likeTrip, commentTrip, addToWishlist, removeFromWishlist } from '../api';
 
 export default function TripCard({ trip }) {
   const { user } = useAuth();
@@ -26,65 +28,67 @@ export default function TripCard({ trip }) {
   const [comments, setComments] = useState(trip.comments || []);
   const [commentText, setCommentText] = useState('');
   const [openComments, setOpenComments] = useState(false);
-  const [inWishlist, setInWishlist] = useState(false);
+  const [inWishlist, setInWishlist] = useState(trip.in_wishlists?.some(w => w.user === user?.id));
+  const [wishlistId, setWishlistId] = useState(
+    trip.in_wishlists?.find(w => w.user === user?.id)?.id || null
+  );
+  const [error, setError] = useState(null);
 
   const handleLike = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      if (!user) {
         window.location.href = '/login';
         return;
       }
       
-      await axios.post(`http://localhost:8000/api/trips/${trip.id}/like/`, {}, {
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      
+      await likeTrip(trip.id);
       setIsLiked(!isLiked);
       setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
     } catch (error) {
       console.error('Error toggling like:', error);
+      setError('Не удалось поставить лайк');
     }
   };
 
   const handleAddComment = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      if (!user) {
         window.location.href = '/login';
         return;
       }
       
-      const response = await axios.post(
-        `http://localhost:8000/api/trips/${trip.id}/comment/`,
-        { text: commentText },
-        { headers: { 'Authorization': `Token ${token}` } }
-      );
-      
+      const response = await commentTrip(trip.id, commentText);
       setComments([...comments, response.data]);
       setCommentText('');
     } catch (error) {
       console.error('Error adding comment:', error);
+      setError('Не удалось добавить комментарий');
     }
   };
-
-  const handleAddToWishlist = async () => {
+  // TripCard.js
+const handleWishlist = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      if (!user) {
         window.location.href = '/login';
         return;
       }
       
-      await axios.post(
-        'http://localhost:8000/api/wishlist/',
-        { trip: trip.id },
-        { headers: { 'Authorization': `Token ${token}` } }
-      );
-      
-      setInWishlist(true);
+      if (inWishlist) {
+        await removeFromWishlist(wishlistId);
+        setInWishlist(false);
+        setWishlistId(null);
+      } else {
+        const response = await addToWishlist(trip.id);
+        setInWishlist(true);
+        setWishlistId(response.data.id);
+      }
     } catch (error) {
-      console.error('Error adding to wishlist:', error);
+      console.error('Error:', error.response?.data);
+      setError(
+        error.response?.data?.detail || 
+        error.response?.data?.trip?.[0] || 
+        'Ошибка при обновлении списка желаний'
+      );
     }
   };
 
@@ -142,7 +146,7 @@ export default function TripCard({ trip }) {
           <Typography component="span">{comments.length}</Typography>
         </Box>
         
-        <IconButton onClick={handleAddToWishlist}>
+        <IconButton onClick={handleWishlist}>
           {inWishlist ? <Bookmark color="primary" /> : <BookmarkBorder />}
         </IconButton>
       </Box>
@@ -190,6 +194,17 @@ export default function TripCard({ trip }) {
           <Button onClick={() => setOpenComments(false)}>Закрыть</Button>
         </DialogActions>
       </Dialog>
+      
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Card>
   );
 }

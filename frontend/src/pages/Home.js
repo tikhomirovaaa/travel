@@ -10,7 +10,7 @@ import {
   Paper
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { getTrips, addToWishlist } from '../api';
+import { getTrips } from '../api';
 import TripCard from '../components/TripCard';
 import { useAuth } from '../context/AuthContext';
 
@@ -43,16 +43,6 @@ export default function Home() {
 
   const handlePageChange = (event, value) => {
     setPage(value);
-  };
-
-  const handleAddToWishlist = async (tripId) => {
-    try {
-      await addToWishlist(tripId);
-      alert('Путешествие добавлено в ваш список желаний!');
-    } catch (error) {
-      console.error('Ошибка при добавлении в список желаний:', error);
-      alert('Для добавления в список желаний необходимо авторизоваться');
-    }
   };
 
   if (!authChecked) {
@@ -117,10 +107,7 @@ export default function Home() {
           <Grid container spacing={4}>
             {trips.map(trip => (
               <Grid item xs={12} sm={6} md={4} key={trip.id}>
-                <TripCard 
-                  trip={trip} 
-                  onAddToWishlist={user ? handleAddToWishlist : null}
-                />
+                <TripCard trip={trip} />
               </Grid>
             ))}
           </Grid>

@@ -14,14 +14,16 @@ import {
   DialogActions,
   TextField,
   Snackbar,
-  Alert
+  Alert,
+  Menu,
+  MenuItem
 } from '@mui/material';
-import { Favorite, FavoriteBorder, Comment, Bookmark, BookmarkBorder } from '@mui/icons-material';
+import { Favorite, FavoriteBorder, Comment, Bookmark, BookmarkBorder, MoreVert } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { likeTrip, commentTrip, addToWishlist, removeFromWishlist } from '../api';
+import { likeTrip, commentTrip, addToWishlist, removeFromWishlist, deleteTrip } from '../api';
 
-export default function TripCard({ trip }) {
+export default function TripCard({ trip, onDelete }) {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(trip.is_liked);
   const [likeCount, setLikeCount] = useState(trip.total_likes);
@@ -33,6 +35,16 @@ export default function TripCard({ trip }) {
     trip.in_wishlists?.find(w => w.user === user?.id)?.id || null
   );
   const [error, setError] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleLike = async () => {
     try {
@@ -65,8 +77,8 @@ export default function TripCard({ trip }) {
       setError('Не удалось добавить комментарий');
     }
   };
-  // TripCard.js
-const handleWishlist = async () => {
+
+  const handleWishlist = async () => {
     try {
       if (!user) {
         window.location.href = '/login';
@@ -92,14 +104,53 @@ const handleWishlist = async () => {
     }
   };
 
+  const handleDeleteTrip = async () => {
+    try {
+      if (user && (user.id === trip.author.id || user.is_staff)) { // Разрешаем удаление автору или админу
+        await deleteTrip(trip.id);
+        if (typeof onDelete === 'function') {
+          onDelete(); // Вызываем колбэк для обновления списка
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting trip:', error);
+      setError('Не удалось удалить путешествие');
+    } finally {
+      handleMenuClose();
+    }
+  };
+
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <CardMedia
-        component={Link}
-        to={`/trips/${trip.id}`}
-        image={`http://localhost:8000${trip.image}`}
-        height="200"
-      />
+      <Box sx={{ position: 'relative' }}>
+        <CardMedia
+          component={Link}
+          to={`/trips/${trip.id}`}
+          image={`http://localhost:8000${trip.image}`}
+          height="200"
+        />
+        {(user && (user.id === trip.author.id || user.is_staff)) && ( // Показываем меню автору или админу
+          <IconButton
+            aria-label="more"
+            aria-controls="long-menu"
+            aria-haspopup="true"
+            onClick={handleMenuClick}
+            sx={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.7)' }}
+          >
+            <MoreVert />
+          </IconButton>
+        )}
+      </Box>
+      
+      <Menu
+        id="long-menu"
+        anchorEl={anchorEl}
+        keepMounted
+        open={openMenu}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleDeleteTrip}>Удалить</MenuItem>
+      </Menu>
       
       <CardContent sx={{ flexGrow: 1 }}>
         <Typography 

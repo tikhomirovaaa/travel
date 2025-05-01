@@ -13,13 +13,18 @@ export default function Header() {
     navigate('/login');
   };
 
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    navigate('/', { state: { refresh: true } });
+  };
+
   return (
     <>
       <AppBar position="static">
         <Container maxWidth="xl">
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              <Link to="/" style={{ color: 'white', textDecoration: 'none' }}>
+              <Link to="/" onClick={handleLogoClick} style={{ color: 'white', textDecoration: 'none' }}>
                 TravelImpressions
               </Link>
             </Typography>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Container, 
   Typography,  
@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { getTrips } from '../api';
 import TripCard from '../components/TripCard';
 import { useAuth } from '../context/AuthContext';
+import CreateTripForm from '../components/CreateTripForm';
 
 export default function Home() {
   const { user, authChecked } = useAuth();
@@ -20,29 +21,43 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); 
   const tripsPerPage = 6;
 
-  useEffect(() => {
-    const fetchTrips = async () => {
-      try {
-        setLoading(true);
-        const response = await getTrips({ page });
-        setTrips(response.data.results || []);
-        setTotalPages(Math.ceil(response.data.count / tripsPerPage));
-      } catch (error) {
-        console.error('Ошибка при загрузке путешествий:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchTrips = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getTrips({ page });
+      
+      // Изменение здесь - работаем с массивом напрямую, если нет results
+      const tripsData = response.data.results || response.data;
+      const totalCount = response.data.count || response.data.length;
+      
+      setTrips(tripsData);
+      setTotalPages(Math.ceil(totalCount / tripsPerPage));
+    } catch (error) {
+      console.error('Ошибка при загрузке путешествий:', error);
+      setTrips([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, refreshTrigger]);
 
+  useEffect(() => {
     if (authChecked) {
       fetchTrips();
     }
-  }, [page, authChecked]);
+  }, [page, authChecked, fetchTrips]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
+  };
+
+  const handleNewTripCreated = () => {
+    setRefreshTrigger(prev => prev + 1);
+    setPage(1);
+    setCreateModalOpen(false);
   };
 
   if (!authChecked) {
@@ -66,8 +81,19 @@ export default function Home() {
           mb: 4
         }}
       >
-        Последние путешествия
+        Путешествия
       </Typography>
+
+      {user && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
+          <Button 
+            variant="contained" 
+            onClick={() => setCreateModalOpen(true)}
+          >
+            Создать новое путешествие
+          </Button>
+        </Box>
+      )}
 
       {!user && (
         <Paper elevation={3} sx={{ p: 4, mb: 4, textAlign: 'center' }}>
@@ -105,11 +131,19 @@ export default function Home() {
       ) : (
         <>
           <Grid container spacing={4}>
-            {trips.map(trip => (
-              <Grid item xs={12} sm={6} md={4} key={trip.id}>
-                <TripCard trip={trip} />
+            {trips.length > 0 ? (
+              trips.map(trip => (
+                <Grid item xs={12} sm={6} md={4} key={trip.id}>
+                  <TripCard trip={trip} onDelete={fetchTrips} />
+                </Grid>
+              ))
+            ) : (
+              <Grid item xs={12}>
+                <Typography variant="h6" textAlign="center">
+                  Пока нет путешествий. Будьте первым!
+                </Typography>
               </Grid>
-            ))}
+            )}
           </Grid>
 
           {totalPages > 1 && (
@@ -125,6 +159,12 @@ export default function Home() {
           )}
         </>
       )}
+
+      <CreateTripForm 
+        open={createModalOpen}
+        handleClose={() => setCreateModalOpen(false)}
+        onTripCreated={handleNewTripCreated}
+      />
     </Container>
   );
 }

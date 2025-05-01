@@ -28,7 +28,18 @@ api.interceptors.response.use(
 export const login = (credentials) => api.post('auth/token/login/', credentials);
 export const registerUser = (data) => api.post('auth/users/', data);
 export const logout = () => api.post('auth/token/logout/');
-export const getTrips = (params = {}) => api.get('trips/', { params });
+export const getTrips = (params = {}) => {
+  console.log('Fetching trips with params:', params); // Добавляем лог
+  return api.get('trips/', { params })
+    .then(response => {
+      console.log('API response:', response.data); // Лог ответа
+      return response;
+    })
+    .catch(error => {
+      console.error('API error:', error);
+      throw error;
+    });
+};
 export const getTrip = (id) => api.get(`trips/${id}/`);
 export const createTrip = (data) => {
   const formData = new FormData();
@@ -45,6 +56,8 @@ export const createTrip = (data) => {
     }
   });
 };
+export const deleteTrip = (id) => api.delete(`trips/${id}/`);
+
 export const likeTrip = (id) => api.post(`trips/${id}/like/`);
 export const commentTrip = (id, text) => api.post(`trips/${id}/comment/`, { text });
 export const getUser = (username) => api.get(`users/?username=${username}`);

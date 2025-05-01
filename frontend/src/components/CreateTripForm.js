@@ -12,13 +12,14 @@ import {
   Avatar,
   IconButton,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { PhotoCamera } from '@mui/icons-material';
 import { createTrip } from '../api';
 import { useNavigate } from 'react-router-dom';
 
-export default function CreateTripForm({ open, handleClose }) {
+export default function CreateTripForm({ open, handleClose, onTripCreated }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
@@ -52,18 +53,23 @@ export default function CreateTripForm({ open, handleClose }) {
     try {
       setLoading(true);
       setError(null);
-
+  
       const tripData = {
         title,
         description,
         image,
         tags
       };
-
+  
       const response = await createTrip(tripData);
-      handleClose();
       resetForm();
+      
+      if (typeof onTripCreated === 'function') {
+        await onTripCreated();
+      }
+      
       navigate(`/trips/${response.data.id}`);
+      handleClose();
     } catch (error) {
       console.error('Error creating trip:', error);
       setError(error.response?.data?.detail || 'Ошибка при создании поста');
@@ -88,8 +94,22 @@ export default function CreateTripForm({ open, handleClose }) {
   };
 
   return (
-    <Dialog open={open} onClose={handleCloseForm} fullWidth maxWidth="md">
-      <DialogTitle>Создать новое путешествие</DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={handleCloseForm} 
+      fullWidth 
+      maxWidth="md"
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          padding: 1
+        }
+      }}
+    >
+      <DialogTitle sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+        Создать новое путешествие
+      </DialogTitle>
+      
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
           <TextField
@@ -98,6 +118,8 @@ export default function CreateTripForm({ open, handleClose }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
+            sx={{ marginBottom: 2 }}
+            inputProps={{ maxLength: 200 }}
           />
           
           <TextField
@@ -108,11 +130,24 @@ export default function CreateTripForm({ open, handleClose }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
+            sx={{ marginBottom: 2 }}
           />
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton color="primary" component="label">
-              <PhotoCamera />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 2 }}>
+            <IconButton 
+              color="primary" 
+              component="label"
+              sx={{ 
+                border: '1px dashed',
+                borderColor: 'primary.main',
+                borderRadius: 1,
+                padding: 2
+              }}
+            >
+              <PhotoCamera sx={{ marginRight: 1 }} />
+              <Typography variant="body2">
+                {image ? image.name : 'Выберите изображение'}
+              </Typography>
               <input 
                 type="file" 
                 hidden 
@@ -122,18 +157,22 @@ export default function CreateTripForm({ open, handleClose }) {
                 name="trip-image"
               />
             </IconButton>
-            <Typography>{image ? image.name : 'Выберите изображение'}</Typography>
           </Box>
           
           {preview && (
             <Avatar 
               src={preview} 
               variant="rounded" 
-              sx={{ width: '100%', height: 200, objectFit: 'cover' }}
+              sx={{ 
+                width: '100%', 
+                height: 200, 
+                objectFit: 'cover',
+                marginBottom: 2
+              }}
             />
           )}
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2 }}>
             <TextField
               label="Добавить тег"
               fullWidth
@@ -141,28 +180,66 @@ export default function CreateTripForm({ open, handleClose }) {
               onChange={(e) => setTagInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
             />
-            <Button onClick={handleAddTag}>Добавить</Button>
+            <Button 
+              onClick={handleAddTag}
+              variant="outlined"
+              disabled={!tagInput}
+            >
+              Добавить
+            </Button>
           </Box>
           
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {tags.map(tag => (
-              <Chip 
-                key={tag} 
-                label={tag} 
-                onDelete={() => handleRemoveTag(tag)}
-              />
-            ))}
+          <Box sx={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: 1,
+            minHeight: 40,
+            marginBottom: 2
+          }}>
+            {tags.length > 0 ? (
+              tags.map(tag => (
+                <Chip 
+                  key={tag} 
+                  label={tag} 
+                  onDelete={() => handleRemoveTag(tag)}
+                  sx={{ marginBottom: 1 }}
+                />
+              ))
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Добавьте теги для вашего путешествия
+              </Typography>
+            )}
           </Box>
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleCloseForm}>Отмена</Button>
+      
+      <DialogActions sx={{ padding: 3 }}>
+        <Button 
+          onClick={handleCloseForm}
+          variant="outlined"
+          sx={{ marginRight: 2 }}
+        >
+          Отмена
+        </Button>
         <Button 
           onClick={handleSubmit} 
           variant="contained" 
           disabled={!title || !description || !image || loading}
+          sx={{ minWidth: 120 }}
         >
-          {loading ? 'Публикация...' : 'Опубликовать'}
+          {loading ? (
+            <>
+              <CircularProgress 
+                size={24} 
+                sx={{ 
+                  color: 'inherit',
+                  marginRight: 1
+                }} 
+              />
+              Публикация...
+            </>
+          ) : 'Опубликовать'}
         </Button>
       </DialogActions>
 
@@ -172,7 +249,11 @@ export default function CreateTripForm({ open, handleClose }) {
         onClose={() => setError(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setError(null)}>
+        <Alert 
+          severity="error" 
+          onClose={() => setError(null)}
+          sx={{ width: '100%' }}
+        >
           {error}
         </Alert>
       </Snackbar>

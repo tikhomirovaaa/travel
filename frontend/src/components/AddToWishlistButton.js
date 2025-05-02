@@ -1,3 +1,4 @@
+// AddToWishlistButton.jsx
 import React, { useState } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
 import { addToWishlist } from '../api';
@@ -14,8 +15,8 @@ export default function AddToWishlistButton({ tripId }) {
       await addToWishlist(tripId);
       setSuccess(true);
     } catch (err) {
-      console.error('Error adding to wishlist:', err);
-      setError(err.response?.data?.detail || err.response?.data?.trip || 'Failed to add to wishlist');
+      console.error('Ошибка добавления в избранное:', err);
+      setError(err.response?.data?.detail || err.response?.data?.trip || 'Не удалось добавить в избранное');
     } finally {
       setLoading(false);
     }
@@ -29,7 +30,7 @@ export default function AddToWishlistButton({ tripId }) {
         disabled={loading}
         sx={{ mt: 2 }}
       >
-        {loading ? 'Adding...' : 'Add to Wishlist'}
+        {loading ? 'Добавление...' : 'В избранное'}
       </Button>
 
       <Snackbar
@@ -45,7 +46,7 @@ export default function AddToWishlistButton({ tripId }) {
         autoHideDuration={3000}
         onClose={() => setSuccess(false)}
       >
-        <Alert severity="success">Added to wishlist!</Alert>
+        <Alert severity="success">Добавлено в избранное!</Alert>
       </Snackbar>
     </>
   );

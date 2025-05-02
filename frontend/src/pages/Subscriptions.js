@@ -1,3 +1,4 @@
+// Subscriptions.jsx
 import React, { useEffect, useState, useContext } from 'react';
 import { 
   Container, 
@@ -62,7 +63,7 @@ export default function Subscriptions() {
           setTrips(tripsRes.data);
         }
       } catch (error) {
-        console.error('Error fetching subscriptions:', error);
+        console.error('Ошибка загрузки подписок:', error);
       } finally {
         setLoading(false);
       }
@@ -77,8 +78,9 @@ export default function Subscriptions() {
         headers: { Authorization: `Token ${localStorage.getItem('token')}` }
       });
       setSubscriptions(subscriptions.filter(sub => sub.id !== id));
+      setTrips(trips.filter(trip => trip.author.id !== id));
     } catch (error) {
-      console.error('Error unsubscribing:', error);
+      console.error('Ошибка отписки:', error);
     }
   };
 
@@ -110,8 +112,8 @@ export default function Subscriptions() {
           ) : (
             <Typography variant="h6" sx={{ mt: 4 }}>
               {subscriptions.length === 0 
-                ? 'Вы пока ни на кого не подписаны' 
-                : 'Новых постов от ваших подписок нет'}
+                ? 'Вы ни на кого не подписаны' 
+                : 'Нет новых постов от ваших подписок'}
             </Typography>
           )}
         </Grid>
@@ -142,7 +144,7 @@ export default function Subscriptions() {
             ))
           ) : (
             <Typography variant="h6" sx={{ mt: 4 }}>
-              Вы пока ни на кого не подписаны
+              Вы ни на кого не подписаны
             </Typography>
           )}
         </List>

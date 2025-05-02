@@ -1,3 +1,4 @@
+// AuthContext.jsx
 import { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { getCurrentUser } from '../api';
@@ -17,7 +18,7 @@ export const AuthProvider = ({ children }) => {
         const response = await getCurrentUser();
         setUser(response.data);
       } catch (error) {
-        console.error('Auth error:', error);
+        console.error('Ошибка авторизации:', error);
         localStorage.removeItem('token');
         delete axios.defaults.headers.common['Authorization'];
       }
@@ -39,7 +40,7 @@ export const AuthProvider = ({ children }) => {
       setUser(userResponse.data);
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Ошибка входа:', error);
       return { success: false, error: error.response?.data };
     }
   };
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await axios.post('http://localhost:8000/api/auth/token/logout/');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Ошибка выхода:', error);
     }
     localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];

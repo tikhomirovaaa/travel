@@ -1,3 +1,4 @@
+// Login.jsx
 import React, { useState } from 'react';
 import { TextField, Button, Container, Typography } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -21,8 +22,8 @@ export default function Login() {
     try {
       const { success, error } = await login(formData);
       if (success) {
-        navigate('/'); // Перенаправляем на главную
-        window.location.reload(); // Перезагружаем страницу
+        navigate('/');
+        window.location.reload();
       } else {
         setError(error || 'Неверные учетные данные');
       }

@@ -24,32 +24,40 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+export const subscribeToUser = (userId) => {
+  return api.post('subscriptions/', { target_user: userId });
+};
 
+export const unsubscribeFromUser = (userId) => {
+  return api.delete(`subscriptions/${userId}/`);
+};
+
+export const getSubscriptions = (userId) => {
+  return api.get(`subscriptions/?subscriber=${userId}`);
+};
+
+export const getSubscribers = (userId) => {
+  return api.get(`subscriptions/?target_user=${userId}`);
+};
 export const login = (credentials) => api.post('auth/token/login/', credentials);
 export const registerUser = (data) => api.post('auth/users/', data);
 export const logout = () => api.post('auth/token/logout/');
-export const getTrips = (params = {}) => {
-  console.log('Fetching trips with params:', params); // Добавляем лог
-  return api.get('trips/', { params })
-    .then(response => {
-      console.log('API response:', response.data); // Лог ответа
-      return response;
-    })
-    .catch(error => {
-      console.error('API error:', error);
-      throw error;
-    });
-};
+export const getTrips = (params = {}) => api.get('trips/', { params });
 export const getTrip = (id) => api.get(`trips/${id}/`);
 export const createTrip = (data) => {
   const formData = new FormData();
-  Object.keys(data).forEach(key => {
-    if (key === 'tags') {
-      data.tags.forEach(tag => formData.append('tags', tag));
-    } else if (data[key] !== null && data[key] !== undefined) {
-      formData.append(key, data[key]);
-    }
+  
+  // Добавляем все поля явно
+  formData.append('title', data.get('title'));
+  formData.append('description', data.get('description'));
+  formData.append('image', data.get('image'));
+  
+  // Обрабатываем теги
+  const tags = data.getAll('tags');
+  tags.forEach(tag => {
+    if (tag) formData.append('tags', tag);
   });
+
   return api.post('trips/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
@@ -76,12 +84,42 @@ export const updateUser = (data) => {
   });
 };
 export const getWishlist = () => api.get('wishlist/');
-export const addToWishlist = (tripId, notes = '') => {
-  return api.post('wishlist/', {
-    trip: tripId,
-    notes: notes
-  });
+export const checkWishlist = async (tripId) => {
+  try {
+    const response = await api.get('wishlist/');
+    const wishlistItem = response.data.find(item => item.trip.id === tripId);
+    return {
+      exists: !!wishlistItem,
+      id: wishlistItem?.id || null
+    };
+  } catch (error) {
+    console.error('Error checking wishlist:', error);
+    return { exists: false, id: null };
+  }
 };
+
+export const addToWishlist = async (tripId, notes = '') => {
+  try {
+    const { exists } = await checkWishlist(tripId);
+    if (exists) {
+      return { data: { id: 'existing' } };
+    }
+    
+    return await api.post('wishlist/', {
+      trip: tripId,
+      notes: notes
+    });
+  } catch (error) {
+    if (error.response?.status === 400 && error.response?.data?.detail?.includes('already exists')) {
+      // Если запись уже существует, возвращаем существующую
+      const response = await api.get('wishlist/');
+      const wishlistItem = response.data.find(item => item.trip.id === tripId);
+      return { data: wishlistItem };
+    }
+    throw error;
+  }
+};
+
 export const removeFromWishlist = (id) => api.delete(`wishlist/${id}/`);
 export const downloadWishlist = (tripIds, format) => 
   api.post('wishlist/download/', { trip_ids: tripIds, format }, { 

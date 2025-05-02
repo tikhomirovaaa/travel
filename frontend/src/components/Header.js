@@ -1,3 +1,4 @@
+// Header.jsx
 import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
@@ -35,10 +36,13 @@ export default function Header() {
                   Создать пост
                 </Button>
                 <Button color="inherit" component={Link} to="/wishlist">
-                  Мой список
+                  Избранное
                 </Button>
                 <Button color="inherit" component={Link} to="/subscriptions">
                   Подписки
+                </Button>
+                <Button color="inherit" component={Link} to="/profile">
+                  Профиль
                 </Button>
                 <Button color="inherit" onClick={handleLogout}>
                   Выйти

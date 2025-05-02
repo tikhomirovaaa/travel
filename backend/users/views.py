@@ -40,3 +40,9 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         if Subscription.objects.filter(subscriber=self.request.user, target_user=target_user).exists():
             raise serializers.ValidationError({"detail": "You are already subscribed to this user"})
         serializer.save(subscriber=self.request.user, target_user=target_user)
+
+    @action(detail=False, methods=['get'])
+    def subscribers(self, request):
+        subscribers = User.objects.filter(subscribers__target_user=request.user)
+        serializer = self.get_serializer(subscribers, many=True)
+        return Response(serializer.data)

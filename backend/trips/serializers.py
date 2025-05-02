@@ -34,6 +34,17 @@ class TripSerializer(TaggitSerializer, serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     total_likes = serializers.IntegerField(read_only=True)
     
+    def validate(self, data):
+        required_fields = ['title', 'description', 'image']
+        for field in required_fields:
+            if not data.get(field):
+                raise serializers.ValidationError({field: "This field is required."})
+        
+        if not data.get('tags'):
+            raise serializers.ValidationError({"tags": "At least one tag is required."})
+            
+        return data
+    
     class Meta:
         model = Trip
         fields = ['id', 'title', 'description', 'image', 'author', 

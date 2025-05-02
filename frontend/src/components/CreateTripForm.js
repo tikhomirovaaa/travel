@@ -50,18 +50,27 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
   };
 
   const handleSubmit = async () => {
+    if (!title || !description || !image || tags.length === 0) {
+      setError('Пожалуйста, заполните все обязательные поля');
+      return;
+    }
+  
     try {
       setLoading(true);
       setError(null);
   
-      const tripData = {
-        title,
-        description,
-        image,
-        tags
-      };
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('image', image);
+      tags.forEach(tag => formData.append('tags', tag));
   
-      const response = await createTrip(tripData);
+      // Добавим логирование для отладки
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+  
+      const response = await createTrip(formData);
       resetForm();
       
       if (typeof onTripCreated === 'function') {
@@ -71,13 +80,13 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
       navigate(`/trips/${response.data.id}`);
       handleClose();
     } catch (error) {
-      console.error('Error creating trip:', error);
-      setError(error.response?.data?.detail || 'Ошибка при создании поста');
+      console.error('Ошибка создания поездки:', error);
+      // Более детальное отображение ошибки
+      setError(error.response?.data || error.message || 'Не удалось создать поездку');
     } finally {
       setLoading(false);
     }
   };
-
   const resetForm = () => {
     setTitle('');
     setDescription('');
@@ -107,23 +116,24 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
       }}
     >
       <DialogTitle sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-        Создать новое путешествие
+        Создать новую поездку
       </DialogTitle>
       
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
           <TextField
-            label="Название"
+            label="Название*"
             fullWidth
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
             sx={{ marginBottom: 2 }}
             inputProps={{ maxLength: 200 }}
+            error={!title && error}
           />
           
           <TextField
-            label="Описание"
+            label="Описание*"
             multiline
             rows={4}
             fullWidth
@@ -131,6 +141,7 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
             onChange={(e) => setDescription(e.target.value)}
             required
             sx={{ marginBottom: 2 }}
+            error={!description && error}
           />
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 2 }}>
@@ -139,14 +150,14 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
               component="label"
               sx={{ 
                 border: '1px dashed',
-                borderColor: 'primary.main',
+                borderColor: error && !image ? 'error.main' : 'primary.main',
                 borderRadius: 1,
                 padding: 2
               }}
             >
               <PhotoCamera sx={{ marginRight: 1 }} />
               <Typography variant="body2">
-                {image ? image.name : 'Выберите изображение'}
+                {image ? image.name : 'Выберите изображение*'}
               </Typography>
               <input 
                 type="file" 
@@ -155,8 +166,14 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
                 onChange={handleImageChange}
                 id="trip-image-input"
                 name="trip-image"
+                required
               />
             </IconButton>
+            {error && !image && (
+              <Typography color="error" variant="caption">
+                Изображение обязательно
+              </Typography>
+            )}
           </Box>
           
           {preview && (
@@ -174,11 +191,13 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2 }}>
             <TextField
-              label="Добавить тег"
+              label="Добавить тег*"
               fullWidth
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+              error={tags.length === 0 && error}
+              helperText={tags.length === 0 && error ? "Добавьте хотя бы один тег" : ""}
             />
             <Button 
               onClick={handleAddTag}
@@ -206,8 +225,8 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
                 />
               ))
             ) : (
-              <Typography variant="body2" color="text.secondary">
-                Добавьте теги для вашего путешествия
+              <Typography variant="body2" color={error ? "error" : "text.secondary"}>
+                {error ? "Добавьте теги для вашей поездки" : "Добавьте теги для вашей поездки"}
               </Typography>
             )}
           </Box>
@@ -225,7 +244,7 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
         <Button 
           onClick={handleSubmit} 
           variant="contained" 
-          disabled={!title || !description || !image || loading}
+          disabled={loading}
           sx={{ minWidth: 120 }}
         >
           {loading ? (
@@ -254,7 +273,7 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
           onClose={() => setError(null)}
           sx={{ width: '100%' }}
         >
-          {error}
+          {typeof error === 'object' ? JSON.stringify(error) : error}
         </Alert>
       </Snackbar>
     </Dialog>

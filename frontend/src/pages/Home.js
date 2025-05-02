@@ -1,3 +1,4 @@
+// Home.jsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Container, 
@@ -10,7 +11,7 @@ import {
   Paper
 } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { getTrips } from '../api';
+import { getTrips, getWishlist } from '../api';
 import TripCard from '../components/TripCard';
 import { useAuth } from '../context/AuthContext';
 import CreateTripForm from '../components/CreateTripForm';
@@ -29,12 +30,25 @@ export default function Home() {
     try {
       setLoading(true);
       const response = await getTrips({ page });
-      
-      // Изменение здесь - работаем с массивом напрямую, если нет results
       const tripsData = response.data.results || response.data;
-      const totalCount = response.data.count || response.data.length;
       
-      setTrips(tripsData);
+      if (user) {
+        const wishlistResponse = await getWishlist();
+        const wishlistTripIds = wishlistResponse.data.map(item => item.trip.id);
+        
+        const enhancedTrips = tripsData.map(trip => ({
+          ...trip,
+          in_wishlists: wishlistTripIds.includes(trip.id) 
+            ? [{ user: user.id }] 
+            : []
+        }));
+        
+        setTrips(enhancedTrips);
+      } else {
+        setTrips(tripsData);
+      }
+      
+      const totalCount = response.data.count || response.data.length;
       setTotalPages(Math.ceil(totalCount / tripsPerPage));
     } catch (error) {
       console.error('Ошибка при загрузке путешествий:', error);
@@ -42,7 +56,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [page, refreshTrigger]);
+  }, [page, refreshTrigger, user]);
 
   useEffect(() => {
     if (authChecked) {
@@ -90,7 +104,7 @@ export default function Home() {
             variant="contained" 
             onClick={() => setCreateModalOpen(true)}
           >
-            Создать новое путешествие
+            Создать новую поездку
           </Button>
         </Box>
       )}
@@ -101,7 +115,7 @@ export default function Home() {
             Присоединяйтесь к нашему сообществу путешественников!
           </Typography>
           <Typography variant="body1" sx={{ mb: 3 }}>
-            Зарегистрируйтесь, чтобы сохранять понравившиеся путешествия и создавать свои собственные маршруты.
+            Зарегистрируйтесь, чтобы сохранять понравившиеся поездки и создавать свои собственные маршруты.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
             <Button 

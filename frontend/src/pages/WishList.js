@@ -16,11 +16,13 @@ import {
   DialogActions,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  IconButton
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getWishlist, removeFromWishlist, downloadWishlist } from '../api';
+import { Bookmark } from '@mui/icons-material';
 
 export default function WishList() {
   const { user, authChecked } = useAuth();
@@ -46,8 +48,8 @@ export default function WishList() {
       const response = await getWishlist();
       setWishlist(response.data);
     } catch (err) {
-      console.error('Ошибка загрузки списка:', err);
-      setError(err.response?.data?.detail || 'Не удалось загрузить список');
+      console.error('Ошибка загрузки избранного:', err);
+      setError(err.response?.data?.detail || 'Не удалось загрузить избранное');
     } finally {
       setLoading(false);
     }
@@ -61,14 +63,14 @@ export default function WishList() {
     );
   };
 
-  const handleRemoveFromWishlist = async (wishlistId) => {
+  const handleRemoveFromWishlist = async (wishlistId, tripId) => {
     try {
       await removeFromWishlist(wishlistId);
       setWishlist(prev => prev.filter(item => item.id !== wishlistId));
-      setSelectedTrips(prev => prev.filter(id => id !== wishlistId));
+      setSelectedTrips(prev => prev.filter(id => id !== tripId));
     } catch (err) {
-      console.error('Ошибка удаления:', err);
-      setError('Не удалось удалить из списка');
+      console.error('Ошибка удаления из избранного:', err);
+      setError('Не удалось удалить из избранного');
     }
   };
 
@@ -80,14 +82,14 @@ export default function WishList() {
       );
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `wishlist.${format}`);
+      link.setAttribute('download', `избранное.${format}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       setOpenDownloadDialog(false);
     } catch (err) {
-      console.error('Ошибка загрузки:', err);
-      setError('Не удалось скачать список');
+      console.error('Ошибка загрузки избранного:', err);
+      setError('Не удалось загрузить избранное');
     }
   };
 
@@ -103,7 +105,7 @@ export default function WishList() {
     return (
       <Container sx={{ py: 4, textAlign: 'center' }}>
         <Typography variant="h5" gutterBottom>
-          Пожалуйста, войдите в систему, чтобы просмотреть свой список желаний
+          Войдите, чтобы просмотреть избранное
         </Typography>
         <Button 
           variant="contained" 
@@ -122,7 +124,7 @@ export default function WishList() {
       <Container sx={{ py: 4, textAlign: 'center' }}>
         <CircularProgress size={60} />
         <Typography variant="body1" sx={{ mt: 2 }}>
-          Загрузка вашего списка...
+          Загрузка вашего избранного...
         </Typography>
       </Container>
     );
@@ -130,7 +132,7 @@ export default function WishList() {
 
   return (
     <Container sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>Мой список желаний</Typography>
+      <Typography variant="h4" gutterBottom>Мое избранное</Typography>
       
       {error && (
         <Snackbar 
@@ -148,7 +150,7 @@ export default function WishList() {
       {wishlist.length === 0 ? (
         <Box sx={{ textAlign: 'center', mt: 4 }}>
           <Typography variant="h6" gutterBottom>
-            Вы пока еще ничего не добавляли в список желаний
+            Ваше избранное пусто
           </Typography>
           <Button 
             variant="contained" 
@@ -156,7 +158,7 @@ export default function WishList() {
             to="/trips"
             sx={{ mt: 2 }}
           >
-            Посмотреть путешествия
+            Посмотреть поездки
           </Button>
         </Box>
       ) : (
@@ -175,18 +177,13 @@ export default function WishList() {
           <Grid container spacing={4}>
             {wishlist.map(item => (
               <Grid item xs={12} sm={6} md={4} key={item.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                  <Checkbox
-                    checked={selectedTrips.includes(item.trip.id)}
-                    onChange={() => handleSelectTrip(item.trip.id)}
-                    sx={{ position: 'absolute', zIndex: 1, right: 8, top: 8 }}
-                  />
-                  
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <CardMedia
                     component={Link}
                     to={`/trips/${item.trip.id}`}
                     image={item.trip.image ? `http://localhost:8000${item.trip.image}` : '/placeholder.jpg'}
                     height="200"
+                    sx={{ objectFit: 'cover' }}
                   />
                   
                   <CardContent sx={{ flexGrow: 1 }}>
@@ -198,26 +195,30 @@ export default function WishList() {
                       sx={{ 
                         textDecoration: 'none', 
                         color: 'inherit',
-                        '&:hover': { color: 'primary.main' },
-                        display: 'block'
+                        '&:hover': { color: 'primary.main' }
                       }}
                     >
                       {item.trip.title}
                     </Typography>
                     
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {item.notes || 'Нет заметок'}
+                    <Typography variant="body2" color="text.secondary">
+                      {item.trip.description ? `${item.trip.description.substring(0, 100)}...` : 'Нет описания'}
                     </Typography>
                   </CardContent>
                   
-                  <Button 
-                    variant="outlined" 
-                    color="error"
-                    sx={{ m: 2 }}
-                    onClick={() => handleRemoveFromWishlist(item.id)}
-                  >
-                    Удалить из списка
-                  </Button>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
+                    <Checkbox
+                      checked={selectedTrips.includes(item.trip.id)}
+                      onChange={() => handleSelectTrip(item.trip.id)}
+                    />
+                    
+                    <IconButton 
+                      onClick={() => handleRemoveFromWishlist(item.id, item.trip.id)}
+                      color="error"
+                    >
+                      <Bookmark />
+                    </IconButton>
+                  </Box>
                 </Card>
               </Grid>
             ))}
@@ -226,7 +227,7 @@ export default function WishList() {
       )}
       
       <Dialog open={openDownloadDialog} onClose={() => setOpenDownloadDialog(false)}>
-        <DialogTitle>Скачать список желаний</DialogTitle>
+        <DialogTitle>Скачать избранное</DialogTitle>
         <DialogContent>
           <FormControlLabel
             control={

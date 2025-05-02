@@ -1,3 +1,4 @@
+// Register.jsx
 import React, { useState } from 'react';
 import { TextField, Button, Container, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
@@ -32,8 +33,8 @@ export default function Register() {
       });
 
       if (success) {
-        navigate('/'); // Перенаправляем на главную
-        window.location.reload(); // Перезагружаем страницу
+        navigate('/');
+        window.location.reload();
       } else {
         setError(error || 'Регистрация успешна, но вход не выполнен');
       }

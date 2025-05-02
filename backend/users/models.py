@@ -1,5 +1,5 @@
-from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
@@ -7,10 +7,10 @@ class User(AbstractUser):
     bio = models.TextField(blank=True)
     
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']  
+    REQUIRED_FIELDS = ['username']
 
     def __str__(self):
-        return self.email
+        return self.username
 
 class Subscription(models.Model):
     subscriber = models.ForeignKey(

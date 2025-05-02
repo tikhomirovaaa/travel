@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// TripCard.jsx
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   CardMedia, 
@@ -16,12 +17,24 @@ import {
   Snackbar,
   Alert,
   Menu,
-  MenuItem
+  MenuItem,
+  Tooltip,
+  Avatar
 } from '@mui/material';
-import { Favorite, FavoriteBorder, Comment, Bookmark, BookmarkBorder, MoreVert } from '@mui/icons-material';
+import { Favorite, FavoriteBorder, Bookmark, BookmarkBorder, MoreVert, Comment } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { likeTrip, commentTrip, addToWishlist, removeFromWishlist, deleteTrip } from '../api';
+import { 
+    likeTrip, 
+    commentTrip, 
+    addToWishlist, 
+    removeFromWishlist, 
+    deleteTrip, 
+    checkWishlist,
+    subscribeToUser,
+    unsubscribeFromUser
+  } from '../api';
+import axios from 'axios';
 
 export default function TripCard({ trip, onDelete }) {
   const { user } = useAuth();
@@ -30,13 +43,40 @@ export default function TripCard({ trip, onDelete }) {
   const [comments, setComments] = useState(trip.comments || []);
   const [commentText, setCommentText] = useState('');
   const [openComments, setOpenComments] = useState(false);
-  const [inWishlist, setInWishlist] = useState(trip.in_wishlists?.some(w => w.user === user?.id));
-  const [wishlistId, setWishlistId] = useState(
-    trip.in_wishlists?.find(w => w.user === user?.id)?.id || null
-  );
+  const [inWishlist, setInWishlist] = useState(false);
+  const [wishlistId, setWishlistId] = useState(null);
   const [error, setError] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [loadingWishlist, setLoadingWishlist] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const openMenu = Boolean(anchorEl);
+
+  useEffect(() => {
+    const checkInitialStatus = async () => {
+      if (user) {
+        try {
+          setLoadingWishlist(true);
+          
+          // Check wishlist status
+          const wishlistResponse = await checkWishlist(trip.id);
+          setInWishlist(wishlistResponse.exists);
+          setWishlistId(wishlistResponse.id);
+          
+          // Check subscription status
+          if (trip.author.id !== user.id) {
+            const subResponse = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${user.id}&target_user=${trip.author.id}`);
+            setIsSubscribed(subResponse.data.length > 0);
+          }
+        } catch (err) {
+          console.error('Ошибка проверки статуса:', err);
+        } finally {
+          setLoadingWishlist(false);
+        }
+      }
+    };
+    
+    checkInitialStatus();
+  }, [user, trip.id, trip.author.id]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -57,7 +97,7 @@ export default function TripCard({ trip, onDelete }) {
       setIsLiked(!isLiked);
       setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('Ошибка лайка:', error);
       setError('Не удалось поставить лайк');
     }
   };
@@ -73,7 +113,7 @@ export default function TripCard({ trip, onDelete }) {
       setComments([...comments, response.data]);
       setCommentText('');
     } catch (error) {
-      console.error('Error adding comment:', error);
+      console.error('Ошибка добавления комментария:', error);
       setError('Не удалось добавить комментарий');
     }
   };
@@ -85,6 +125,8 @@ export default function TripCard({ trip, onDelete }) {
         return;
       }
       
+      setLoadingWishlist(true);
+      
       if (inWishlist) {
         await removeFromWishlist(wishlistId);
         setInWishlist(false);
@@ -95,26 +137,43 @@ export default function TripCard({ trip, onDelete }) {
         setWishlistId(response.data.id);
       }
     } catch (error) {
-      console.error('Error:', error.response?.data);
-      setError(
-        error.response?.data?.detail || 
-        error.response?.data?.trip?.[0] || 
-        'Ошибка при обновлении списка желаний'
-      );
+      console.error('Ошибка:', error.response?.data);
+      setError(error.response?.data?.detail || 'Не удалось обновить избранное');
+    } finally {
+      setLoadingWishlist(false);
+    }
+  };
+
+  const handleSubscribe = async () => {
+    try {
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+      
+      if (isSubscribed) {
+        await unsubscribeFromUser(trip.author.id);
+      } else {
+        await subscribeToUser(trip.author.id);
+      }
+      setIsSubscribed(!isSubscribed);
+    } catch (error) {
+      console.error('Ошибка подписки:', error);
+      setError('Не удалось изменить подписку');
     }
   };
 
   const handleDeleteTrip = async () => {
     try {
-      if (user && (user.id === trip.author.id || user.is_staff)) { // Разрешаем удаление автору или админу
+      if (user && (user.id === trip.author.id || user.is_staff)) {
         await deleteTrip(trip.id);
         if (typeof onDelete === 'function') {
-          onDelete(); // Вызываем колбэк для обновления списка
+          onDelete();
         }
       }
     } catch (error) {
-      console.error('Error deleting trip:', error);
-      setError('Не удалось удалить путешествие');
+      console.error('Ошибка удаления поездки:', error);
+      setError('Не удалось удалить поездку');
     } finally {
       handleMenuClose();
     }
@@ -128,8 +187,9 @@ export default function TripCard({ trip, onDelete }) {
           to={`/trips/${trip.id}`}
           image={`http://localhost:8000${trip.image}`}
           height="200"
+          sx={{ objectFit: 'cover' }}
         />
-        {(user && (user.id === trip.author.id || user.is_staff)) && ( // Показываем меню автору или админу
+        {(user && (user.id === trip.author.id || user.is_staff)) && (
           <IconButton
             aria-label="more"
             aria-controls="long-menu"
@@ -179,9 +239,33 @@ export default function TripCard({ trip, onDelete }) {
           ))}
         </Box>
         
-        <Typography variant="caption" display="block" sx={{ mb: 2 }}>
-          Автор: {trip.author.username}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Avatar 
+            src={trip.author.avatar ? `http://localhost:8000${trip.author.avatar}` : ''} 
+            sx={{ width: 24, height: 24 }}
+            component={Link}
+            to={`/profile/${trip.author.username}`}
+          />
+          <Typography variant="caption">
+            <Link 
+              to={`/profile/${trip.author.username}`}
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              {trip.author.username}
+            </Link>
+          </Typography>
+          
+          {user && user.id !== trip.author.id && (
+            <Button 
+              size="small" 
+              variant={isSubscribed ? "outlined" : "contained"}
+              onClick={handleSubscribe}
+              sx={{ ml: 'auto' }}
+            >
+              {isSubscribed ? 'Отписаться' : 'Подписаться'}
+            </Button>
+          )}
+        </Box>
       </CardContent>
       
       <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
@@ -197,9 +281,15 @@ export default function TripCard({ trip, onDelete }) {
           <Typography component="span">{comments.length}</Typography>
         </Box>
         
-        <IconButton onClick={handleWishlist}>
-          {inWishlist ? <Bookmark color="primary" /> : <BookmarkBorder />}
-        </IconButton>
+        <Tooltip title={inWishlist ? "Удалить из избранного" : "Добавить в избранное"}>
+          <IconButton 
+            onClick={handleWishlist} 
+            disabled={loadingWishlist}
+            color={inWishlist ? "primary" : "default"}
+          >
+            {inWishlist ? <Bookmark /> : <BookmarkBorder />}
+          </IconButton>
+        </Tooltip>
       </Box>
       
       <Dialog open={openComments} onClose={() => setOpenComments(false)} fullWidth maxWidth="sm">

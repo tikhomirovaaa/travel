@@ -5,9 +5,18 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    subscribers_count = serializers.SerializerMethodField()
+    subscriptions_count = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'avatar', 'bio']
+        fields = ['id', 'username', 'email', 'avatar', 'bio', 'subscribers_count', 'subscriptions_count']
+
+    def get_subscribers_count(self, obj):
+        return obj.subscribers.count()
+
+    def get_subscriptions_count(self, obj):
+        return obj.subscriptions.count()
 
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,15 +34,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'bio': {'required': False},
         }
 
-    def to_internal_value(self, data):
-        if 'avatar' in data and isinstance(data['avatar'], str) and data['avatar'].startswith('http'):
-            data.pop('avatar')
-        return super().to_internal_value(data)
-
 class SubscriptionSerializer(serializers.ModelSerializer):
     target_user = UserSerializer(read_only=True)
+    subscriber = UserSerializer(read_only=True)
     
     class Meta:
         model = Subscription
-        fields = ['id', 'target_user', 'created_at']
+        fields = ['id', 'target_user', 'subscriber', 'created_at']
         read_only_fields = ['created_at']

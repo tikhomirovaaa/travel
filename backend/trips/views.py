@@ -15,8 +15,11 @@ class TripViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
-    
+        tags = self.request.data.getlist('tags')
+        instance = serializer.save(author=self.request.user)
+        if tags:
+            instance.tags.set(tags)
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
         trip = self.get_object()

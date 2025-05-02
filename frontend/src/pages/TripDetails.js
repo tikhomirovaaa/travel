@@ -1,3 +1,4 @@
+// TripDetails.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -16,7 +17,8 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
-  CircularProgress
+  CircularProgress,
+  Link
 } from '@mui/material';
 import { Favorite, FavoriteBorder, Bookmark, BookmarkBorder } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
@@ -25,19 +27,25 @@ import {
   likeTrip, 
   commentTrip, 
   addToWishlist, 
-  removeFromWishlist 
+  removeFromWishlist,
+  checkWishlist,
+  subscribeToUser,
+  unsubscribeFromUser
 } from '../api';
+import axios from 'axios';
 
 export default function TripDetails() {
   const { id } = useParams();
   const { user } = useAuth();
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [inWishlist, setInWishlist] = useState(false);
   const [wishlistId, setWishlistId] = useState(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     const fetchTrip = async () => {
@@ -49,16 +57,24 @@ export default function TripDetails() {
         setLikeCount(response.data.total_likes);
         
         if (user) {
-          const wishlistItem = response.data.in_wishlists.find(
-            item => item.user === user.id
-          );
-          if (wishlistItem) {
-            setInWishlist(true);
-            setWishlistId(wishlistItem.id);
+          setLoadingWishlist(true);
+          try {
+            const wishlistResponse = await checkWishlist(response.data.id);
+            setInWishlist(wishlistResponse.exists);
+            setWishlistId(wishlistResponse.id);
+            
+            if (response.data.author.id !== user.id) {
+              const subResponse = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${user.id}&target_user=${response.data.author.id}`);
+              setIsSubscribed(subResponse.data.length > 0);
+            }
+          } catch (error) {
+            console.error('Ошибка проверки избранного:', error);
+          } finally {
+            setLoadingWishlist(false);
           }
         }
       } catch (error) {
-        console.error('Error fetching trip:', error);
+        console.error('Ошибка загрузки поездки:', error);
       } finally {
         setLoading(false);
       }
@@ -78,7 +94,7 @@ export default function TripDetails() {
       setIsLiked(!isLiked);
       setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('Ошибка лайка:', error);
     }
   };
 
@@ -96,7 +112,7 @@ export default function TripDetails() {
       });
       setCommentText('');
     } catch (error) {
-      console.error('Error adding comment:', error);
+      console.error('Ошибка добавления комментария:', error);
     }
   };
 
@@ -107,16 +123,39 @@ export default function TripDetails() {
         return;
       }
       
+      setLoadingWishlist(true);
+      
       if (inWishlist) {
         await removeFromWishlist(wishlistId);
         setInWishlist(false);
+        setWishlistId(null);
       } else {
         const response = await addToWishlist(trip.id);
         setInWishlist(true);
         setWishlistId(response.data.id);
       }
     } catch (error) {
-      console.error('Error toggling wishlist:', error);
+      console.error('Ошибка избранного:', error);
+    } finally {
+      setLoadingWishlist(false);
+    }
+  };
+
+  const handleSubscribe = async () => {
+    try {
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+      
+      if (isSubscribed) {
+        await unsubscribeFromUser(trip.author.id);
+      } else {
+        await subscribeToUser(trip.author.id);
+      }
+      setIsSubscribed(!isSubscribed);
+    } catch (error) {
+      console.error('Ошибка подписки:', error);
     }
   };
 
@@ -131,7 +170,7 @@ export default function TripDetails() {
   if (!trip) {
     return (
       <Container>
-        <Typography variant="h4">Путешествие не найдено</Typography>
+        <Typography variant="h4">Поездка не найдена</Typography>
       </Container>
     );
   }
@@ -158,8 +197,12 @@ export default function TripDetails() {
                 <Typography sx={{ ml: 1 }}>{likeCount}</Typography>
               </IconButton>
               
-              <IconButton onClick={handleWishlist}>
-                {inWishlist ? <Bookmark color="primary" /> : <BookmarkBorder />}
+              <IconButton 
+                onClick={handleWishlist} 
+                disabled={loadingWishlist}
+                color={inWishlist ? "primary" : "default"}
+              >
+                {inWishlist ? <Bookmark /> : <BookmarkBorder />}
               </IconButton>
             </Box>
           </Box>
@@ -178,15 +221,27 @@ export default function TripDetails() {
             <Avatar 
               src={trip.author.avatar && `http://localhost:8000${trip.author.avatar}`} 
               sx={{ width: 56, height: 56 }}
+              component={Link}
+              to={`/profile/${trip.author.username}`}
             />
             <Box sx={{ ml: 2 }}>
-              <Typography variant="h6">
+              <Typography variant="h6" component={Link} to={`/profile/${trip.author.username}`}>
                 {trip.author.username}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Опубликовано: {new Date(trip.created_at).toLocaleDateString()}
               </Typography>
             </Box>
+            
+            {user && user.id !== trip.author.id && (
+              <Button 
+                variant={isSubscribed ? "outlined" : "contained"}
+                onClick={handleSubscribe}
+                sx={{ ml: 'auto' }}
+              >
+                {isSubscribed ? 'Отписаться' : 'Подписаться'}
+              </Button>
+            )}
           </Box>
         </CardContent>
       </Card>

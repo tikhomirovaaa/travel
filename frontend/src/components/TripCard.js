@@ -134,7 +134,7 @@ export default function TripCard({ trip, onDelete }) {
       } else {
         const response = await addToWishlist(trip.id);
         setInWishlist(true);
-        setWishlistId(response.data.id);
+        setWishlistId(response.id);
       }
     } catch (error) {
       console.error('Ошибка:', error.response?.data);
@@ -228,10 +228,12 @@ export default function TripCard({ trip, onDelete }) {
         </Typography>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {trip.description.length > 100 
-            ? `${trip.description.substring(0, 100)}...` 
-            : trip.description}
-        </Typography>
+  {trip.description ? 
+    (trip.description.length > 100 
+      ? `${trip.description.substring(0, 100)}...` 
+      : trip.description)
+    : 'Описание отсутствует'}
+</Typography>
         
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
           {trip.tags.map(tag => (

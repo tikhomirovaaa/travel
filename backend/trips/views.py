@@ -65,23 +65,33 @@ class WishlistViewSet(viewsets.ModelViewSet):
         trip_ids = serializer.validated_data['trip_ids']
         format_type = serializer.validated_data['format']
         
+        trips = Trip.objects.filter(id__in=trip_ids).prefetch_related('locations')
+        
+        if trips.count() != len(trip_ids):
+            missing_ids = set(trip_ids) - set(trips.values_list('id', flat=True))
+            return Response(
+                {"detail": f"Поездки с ID {missing_ids} не найдены"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         if format_type == 'pdf':
             buffer = BytesIO()
             p = canvas.Canvas(buffer)
             
             p.setFont("Helvetica-Bold", 16)
-            p.drawString(100, 800, "Your Travel Wishlist")
+            p.drawString(100, 800, "Ваше избранное")
             
             p.setFont("Helvetica", 12)
             y_position = 750
-            for trip in Trip.objects.filter(id__in=trip_ids):
-                locations = trip.locations.all()
-                if locations.exists():
-                    country = locations[0].country
-                else:
-                    country = "No location specified"
+            for trip in trips:
+                # Получаем первое местоположение или используем заглушку
+                location = trip.locations.first() if trip.locations.exists() else None
+                country = location.country if location else "Местоположение не указано"
+                
+                # Рисуем информацию о поездке
                 p.drawString(100, y_position, f"- {trip.title} ({country})")
-                y_position -= 20
+                p.drawString(120, y_position - 15, f"Описание: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}")
+                y_position -= 40
             
             p.save()
             buffer.seek(0)
@@ -92,14 +102,13 @@ class WishlistViewSet(viewsets.ModelViewSet):
             )
         
         elif format_type == 'txt':
-            content = "Your Travel Wishlist:\n\n"
-            for trip in Trip.objects.filter(id__in=trip_ids):
-                locations = trip.locations.all()
-                if locations.exists():
-                    country = locations[0].country
-                else:
-                    country = "No location specified"
+            content = "Ваше избранное:\n\n"
+            for trip in trips:
+                location = trip.locations.first() if trip.locations.exists() else None
+                country = location.country if location else "Местоположение не указано"
+                
                 content += f"- {trip.title} ({country})\n"
+                content += f"  Описание: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}\n\n"
             
             return Response(
                 content,

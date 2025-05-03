@@ -76,10 +76,26 @@ export default function WishList() {
 
   const handleDownload = async () => {
     try {
-      const response = await downloadWishlist(selectedTrips, format);
+      // Фильтруем и проверяем выбранные поездки
+      const validTripIds = wishlist
+        .filter(item => selectedTrips.includes(item.trip.id))
+        .map(item => item.trip.id);
+  
+      if (validTripIds.length === 0) {
+        setError('Выберите хотя бы одну поездку для скачивания');
+        return;
+      }
+  
+      // Используем импортированную функцию downloadWishlist
+      const response = await downloadWishlist(validTripIds, format);
+      
+      // Создаем URL для скачивания
       const url = window.URL.createObjectURL(
-        new Blob([response.data], { type: format === 'pdf' ? 'application/pdf' : 'text/plain' })
+        new Blob([response.data], {
+          type: format === 'pdf' ? 'application/pdf' : 'text/plain'
+        })
       );
+      
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `избранное.${format}`);
@@ -89,7 +105,7 @@ export default function WishList() {
       setOpenDownloadDialog(false);
     } catch (err) {
       console.error('Ошибка загрузки избранного:', err);
-      setError('Не удалось загрузить избранное');
+      setError(err.response?.data?.message || 'Не удалось загрузить избранное');
     }
   };
 
@@ -155,7 +171,7 @@ export default function WishList() {
           <Button 
             variant="contained" 
             component={Link} 
-            to="/trips"
+            to="/"
             sx={{ mt: 2 }}
           >
             Посмотреть поездки

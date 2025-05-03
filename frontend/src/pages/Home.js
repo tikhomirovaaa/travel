@@ -38,6 +38,7 @@ export default function Home() {
         
         const enhancedTrips = tripsData.map(trip => ({
           ...trip,
+          description: trip.description || 'Интересное путешествие',
           in_wishlists: wishlistTripIds.includes(trip.id) 
             ? [{ user: user.id }] 
             : []

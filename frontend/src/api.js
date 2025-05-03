@@ -100,22 +100,13 @@ export const checkWishlist = async (tripId) => {
 
 export const addToWishlist = async (tripId, notes = '') => {
   try {
-    const { exists } = await checkWishlist(tripId);
-    if (exists) {
-      return { data: { id: 'existing' } };
-    }
-    
-    return await api.post('wishlist/', {
+    const response = await api.post('wishlist/', {
       trip: tripId,
       notes: notes
     });
+    return response.data;
   } catch (error) {
-    if (error.response?.status === 400 && error.response?.data?.detail?.includes('already exists')) {
-      // Если запись уже существует, возвращаем существующую
-      const response = await api.get('wishlist/');
-      const wishlistItem = response.data.find(item => item.trip.id === tripId);
-      return { data: wishlistItem };
-    }
+    console.error('Error adding to wishlist:', error);
     throw error;
   }
 };

@@ -5,13 +5,20 @@ from users.serializers import UserSerializer
 
 class PDFDownloadSerializer(serializers.Serializer):
     trip_ids = serializers.ListField(
-        child=serializers.IntegerField(),
+        child=serializers.IntegerField(min_value=1),
         required=True
     )
     format = serializers.ChoiceField(
         choices=['pdf', 'txt'],
         required=True
     )
+
+    def validate_trip_ids(self, value):
+        if not value:
+            raise serializers.ValidationError("Должен быть выбран хотя бы один пост")
+        if any(not isinstance(trip_id, int) for trip_id in value):
+            raise serializers.ValidationError("ID поездки должен быть числом")
+        return value
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:

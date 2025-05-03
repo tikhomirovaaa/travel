@@ -47,17 +47,16 @@ class Comment(models.Model):
     def __str__(self):
         return f"Comment by {self.author.username} on {self.trip.title}"
 
-# trips/models.py
 class Wishlist(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='wishlist'
+        related_name='user_wishlist'
     )
     trip = models.ForeignKey(
         Trip,
         on_delete=models.CASCADE,
-        related_name='in_wishlists'
+        related_name='trip_wishlists'
     )
     notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -65,6 +64,8 @@ class Wishlist(models.Model):
     class Meta:
         unique_together = ['user', 'trip']
         ordering = ['-created_at']
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранные'
 
     def __str__(self):
-        return f"{self.user}'s wish: {self.trip.title}"
+        return f"{self.user.username} - {self.trip.title}"

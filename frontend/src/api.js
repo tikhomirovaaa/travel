@@ -25,13 +25,11 @@ api.interceptors.response.use(
   }
 );
 
-export const subscribeToUser = (userId) => {
-  return api.post('subscriptions/', { target_user: userId });
-};
-
-export const unsubscribeFromUser = (subscriptionId) => {
-  return api.delete(`subscriptions/${subscriptionId}/`);
-};
+// Подписки
+export const subscribeToUser = (userId) => api.post('subscriptions/', { target_user: userId });
+export const unsubscribeFromUser = (subscriptionId) => api.delete(`subscriptions/${subscriptionId}/`);
+export const getSubscriptionStatus = (subscriberId, targetUserId) => 
+  api.get(`subscriptions/?subscriber=${subscriberId}&target_user=${targetUserId}`);
 
 export const getSubscriptions = (userId) => {
   return api.get(`subscriptions/?subscriber=${userId}`);
@@ -39,11 +37,6 @@ export const getSubscriptions = (userId) => {
 
 export const getSubscribers = (userId) => {
   return api.get(`subscriptions/?target_user=${userId}`);
-};
-
-export const getSubscriptionStatus = async (subscriberId, targetUserId) => {
-  const response = await api.get(`subscriptions/?subscriber=${subscriberId}&target_user=${targetUserId}`);
-  return response.data.length > 0 ? response.data[0].id : null;
 };
 
 export const login = (credentials) => api.post('auth/token/login/', credentials);
@@ -92,6 +85,11 @@ export const updateUser = (data) => {
     }
   });
 };
+// Получение постов конкретного пользователя
+export const getTripsByUser = (userId) => {
+  return api.get(`trips/?author=${userId}`);
+};
+
 export const getWishlist = () => api.get('wishlist/');
 export const checkWishlist = async (tripId) => {
   try {
@@ -122,11 +120,23 @@ export const addToWishlist = async (tripId, notes = '') => {
 
 export const removeFromWishlist = (id) => api.delete(`wishlist/${id}/`);
 export const downloadWishlist = (tripIds, format) => {
-  return api.post('wishlist/download/', { 
-    trip_ids: tripIds,
-    format: format
-  }, { 
-    responseType: 'blob'
+  return api.post('wishlist/download/', { trip_ids: tripIds, format }, {
+    responseType: format === 'pdf' ? 'blob' : 'text'
+  });
+};
+export const searchTripsByTag = (tag) => api.get(`trips/?tags=${tag}`);
+// Профиль
+export const updateProfile = (data) => {
+  const formData = new FormData();
+  Object.keys(data).forEach(key => {
+    if (data[key] !== null && data[key] !== undefined) {
+      formData.append(key, data[key]);
+    }
+  });
+  return api.put('users/me/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
   });
 };
 

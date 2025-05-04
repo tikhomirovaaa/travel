@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { 
   Container, 
   Typography,  
@@ -7,14 +7,15 @@ import {
   Pagination,
   Box,
   Button,
-  Paper
+  Paper,
+  TextField,
+  Chip
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { getTrips, getWishlist } from '../api';
 import TripCard from '../components/TripCard';
 import { useAuth } from '../context/AuthContext';
 import CreateTripForm from '../components/CreateTripForm';
-import { AuthContext } from '../context/AuthContext';
 
 export default function Home() {
   const { user, authChecked } = useAuth();
@@ -23,24 +24,29 @@ export default function Home() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [availableTags, setAvailableTags] = useState([]);
   const tripsPerPage = 6;
-
-  const handleSubscriptionChange = (authorId, isSubscribed) => {
-    setTrips(prevTrips => 
-      prevTrips.map(trip => 
-        trip.author.id === authorId 
-          ? { ...trip, is_subscribed: isSubscribed } 
-          : trip
-      )
-    );
-  };
 
   const fetchTrips = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getTrips({ page });
+      const params = { 
+        page,
+        search: searchTerm,
+        tags: selectedTags.join(',')
+      };
+      
+      const response = await getTrips(params);
       const tripsData = response.data.results || response.data;
+      
+      // Получаем уникальные теги из всех поездок
+      const tags = [...new Set(
+        tripsData.flatMap(trip => trip.tags || [])
+      )];
+      setAvailableTags(tags);
       
       if (user) {
         const wishlistResponse = await getWishlist();
@@ -67,7 +73,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [page, refreshTrigger, user]);
+  }, [page, refreshTrigger, user, searchTerm, selectedTags]);
 
   useEffect(() => {
     if (authChecked) {
@@ -83,6 +89,20 @@ export default function Home() {
     setRefreshTrigger(prev => prev + 1);
     setPage(1);
     setCreateModalOpen(false);
+  };
+
+  const handleTagToggle = (tag) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag) 
+        : [...prev, tag]
+    );
+    setPage(1);
+  };
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
   };
 
   if (!authChecked) {
@@ -108,6 +128,28 @@ export default function Home() {
       >
         Путешествия
       </Typography>
+
+      <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Поиск по названию или описанию..."
+          value={searchTerm}
+          onChange={handleSearch}
+        />
+        
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {availableTags.map(tag => (
+            <Chip
+              key={tag}
+              label={tag}
+              clickable
+              color={selectedTags.includes(tag) ? 'primary' : 'default'}
+              onClick={() => handleTagToggle(tag)}
+            />
+          ))}
+        </Box>
+      </Box>
 
       {user && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
@@ -162,7 +204,6 @@ export default function Home() {
                   <TripCard 
                     trip={trip} 
                     onDelete={fetchTrips}
-                    onSubscriptionChange={handleSubscriptionChange}
                   />
                 </Grid>
               ))

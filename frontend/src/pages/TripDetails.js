@@ -175,16 +175,19 @@ export default function TripDetails() {
     );
   }
 
+  console.log(trip)
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Card>
-        <CardMedia
+        {trip.images.map((image) => <CardMedia
           component="img"
-          height="500"
-          image={`http://localhost:8000${trip.image}`}
+          height="250"
+          image={image.image}
           alt={trip.title}
-          sx={{ objectFit: 'cover' }}
-        />
+          sx={{ objectFit: 'cover', marginBottom: '10px', borderRadius: '5px'}}
+        />)}
+ 
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography gutterBottom variant="h2" component="div">

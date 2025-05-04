@@ -24,6 +24,7 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 export const subscribeToUser = (userId) => {
   return api.post('subscriptions/', { target_user: userId });
 };
@@ -40,27 +41,27 @@ export const getSubscribers = (userId) => {
   return api.get(`subscriptions/?target_user=${userId}`);
 };
 
+export const getSubscriptionStatus = async (subscriberId, targetUserId) => {
+  const response = await api.get(`subscriptions/?subscriber=${subscriberId}&target_user=${targetUserId}`);
+  return response.data.length > 0 ? response.data[0].id : null;
+};
+
 export const login = (credentials) => api.post('auth/token/login/', credentials);
 export const registerUser = (data) => api.post('auth/users/', data);
 export const logout = () => api.post('auth/token/logout/');
 export const getTrips = (params = {}) => api.get('trips/', { params });
 export const getTrip = (id) => api.get(`trips/${id}/`);
-// [Previous code remains the same until the createTrip function...]
-
 export const createTrip = (data) => {
   const formData = new FormData();
   
-  // Add basic fields
   formData.append('title', data.get('title'));
   formData.append('description', data.get('description'));
   
-  // Process images
   const images = data.getAll('images');
   images.forEach(image => {
     if (image) formData.append('images', image);
   });
   
-  // Process tags
   const tags = data.getAll('tags');
   tags.forEach(tag => {
     if (tag) formData.append('tags', tag);
@@ -73,16 +74,7 @@ export const createTrip = (data) => {
   });
 };
 
-export const handleSubscription = async (userId, isSubscribed, subscriptionId) => {
-  if (isSubscribed) {
-    return await unsubscribeFromUser(subscriptionId);
-  } else {
-    return await subscribeToUser(userId);
-  }
-};
-
 export const deleteTrip = (id) => api.delete(`trips/${id}/`);
-
 export const likeTrip = (id) => api.post(`trips/${id}/like/`);
 export const commentTrip = (id, text) => api.post(`trips/${id}/comment/`, { text });
 export const getUser = (username) => api.get(`users/?username=${username}`);
@@ -134,7 +126,8 @@ export const downloadWishlist = (tripIds, format) => {
     trip_ids: tripIds,
     format: format
   }, { 
-    responseType: format === 'pdf' ? 'blob' : 'text' 
+    responseType: 'blob'
   });
 };
+
 export default api;

@@ -68,6 +68,7 @@ export default function Profile() {
   const [subscribers, setSubscribers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [error, setError] = useState(null);
+  const [subscriptionId, setSubscriptionId] = useState(null);
 
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -83,26 +84,43 @@ export default function Profile() {
         setLoading(true);
         setError(null);
         
-        const userRes = await axios.get(`http://localhost:8000/api/users/${username}/`);
-        setProfileUser(userRes.data);
-        setEditData({
-          username: userRes.data.username,
-          bio: userRes.data.bio || ''
-        });
-        setAvatarPreview(userRes.data.avatar ? `http://localhost:8000${userRes.data.avatar}` : '');
+        // Получаем данные пользователя
+        const userRes = await axios.get(`http://localhost:8000/api/users/?username=${username}`);
+        if (userRes.data.length === 0) {
+          setError('Пользователь не найден');
+          setLoading(false);
+          return;
+        }
         
-        const tripsRes = await axios.get(`http://localhost:8000/api/trips/?user=${userRes.data.id}`);
+        const userData = userRes.data[0];
+        setProfileUser(userData);
+        setEditData({
+          username: userData.username,
+          bio: userData.bio || ''
+        });
+        setAvatarPreview(userData.avatar ? `http://localhost:8000${userData.avatar}` : '');
+        
+        // Получаем посты пользователя
+        const tripsRes = await axios.get(`http://localhost:8000/api/trips/?author=${userData.id}`);
         setTrips(tripsRes.data);
         
-        const subsRes = await axios.get(`http://localhost:8000/api/subscriptions/?target_user=${userRes.data.id}`);
+        // Получаем подписчиков (тех, кто подписан на этого пользователя)
+        const subsRes = await axios.get(`http://localhost:8000/api/subscriptions/?target_user=${userData.id}`);
         setSubscribers(subsRes.data || []);
         
-        const subscrRes = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${userRes.data.id}`);
+        // Получаем подписки (на кого подписан этот пользователь)
+        const subscrRes = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${userData.id}`);
         setSubscriptions(subscrRes.data || []);
         
-        if (currentUser) {
-          const isSub = subsRes.data.some(sub => sub.subscriber.id === currentUser.id);
-          setIsSubscribed(isSub);
+        // Проверяем, подписан ли текущий пользователь на этого пользователя
+        if (currentUser && currentUser.id !== userData.id) {
+          const subResponse = await axios.get(
+            `http://localhost:8000/api/subscriptions/?subscriber=${currentUser.id}&target_user=${userData.id}`
+          );
+          setIsSubscribed(subResponse.data.length > 0);
+          if (subResponse.data.length > 0) {
+            setSubscriptionId(subResponse.data[0].id);
+          }
         }
       } catch (error) {
         console.error('Ошибка загрузки профиля:', error);
@@ -122,29 +140,28 @@ export default function Profile() {
         return;
       }
       
-      const existingSubscription = subscribers.find(
-        sub => sub.subscriber.id === currentUser.id
-      );
-      
       if (isSubscribed) {
-        await unsubscribeFromUser(existingSubscription.id);
+        await unsubscribeFromUser(subscriptionId);
+        setIsSubscribed(false);
+        setSubscriptionId(null);
       } else {
-        await subscribeToUser(profileUser.id);
+        const response = await subscribeToUser(profileUser.id);
+        setIsSubscribed(true);
+        setSubscriptionId(response.data.id);
       }
       
-      const subsRes = await axios.get(`http://localhost:8000/api/subscriptions/?target_user=${profileUser.id}`);
-      setSubscribers(subsRes.data || []);
+      // Обновляем список подписчиков
+      const updatedSubsRes = await axios.get(
+        `http://localhost:8000/api/subscriptions/?target_user=${profileUser.id}`
+      );
+      setSubscribers(updatedSubsRes.data || []);
       
-      const subscrRes = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${currentUser.id}`);
-      setSubscriptions(subscrRes.data || []);
-      
-      setIsSubscribed(!isSubscribed);
     } catch (error) {
       console.error('Ошибка подписки:', error);
       setError('Не удалось изменить подписку');
     }
   };
-  
+    
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
@@ -157,7 +174,7 @@ export default function Profile() {
       if (avatarFile) {
         formData.append('avatar', avatarFile);
       } else if (avatarPreview === '' && profileUser.avatar) {
-        // If user removed avatar
+        // Если пользователь удалил аватар
         formData.append('avatar', '');
       }
       
@@ -165,11 +182,11 @@ export default function Profile() {
       setProfileUser(response.data);
       setOpenEdit(false);
       
-      // Update current user in context
+      // Обновляем текущего пользователя в контексте
       const userResponse = await getCurrentUser();
       setUser(userResponse.data);
       
-      // Update avatar preview
+      // Обновляем превью аватара
       if (avatarFile) {
         setAvatarPreview(URL.createObjectURL(avatarFile));
       } else if (!response.data.avatar) {
@@ -182,7 +199,7 @@ export default function Profile() {
       setLoading(false);
     }
   };
-  
+
   if (loading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>

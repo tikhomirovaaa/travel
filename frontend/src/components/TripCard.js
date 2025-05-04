@@ -1,5 +1,4 @@
-// TripCard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   Card, 
   CardMedia, 
@@ -11,32 +10,33 @@ import {
   IconButton,
   Dialog,
   DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
   TextField,
   Snackbar,
   Alert,
   Menu,
   MenuItem,
   Tooltip,
-  Avatar
+  Avatar,
+  CircularProgress
 } from '@mui/material';
 import { Favorite, FavoriteBorder, Bookmark, BookmarkBorder, MoreVert, Comment } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-    likeTrip, 
-    commentTrip, 
-    addToWishlist, 
-    removeFromWishlist, 
-    deleteTrip, 
-    checkWishlist,
-    subscribeToUser,
-    unsubscribeFromUser
-  } from '../api';
-import axios from 'axios';
+  likeTrip, 
+  commentTrip, 
+  addToWishlist, 
+  removeFromWishlist, 
+  deleteTrip, 
+  checkWishlist,
+  subscribeToUser,
+  unsubscribeFromUser,
+  getSubscriptionStatus
+} from '../api';
 
-export default function TripCard({ trip, onDelete }) {
+export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(trip.is_liked);
   const [likeCount, setLikeCount] = useState(trip.total_likes);
@@ -49,6 +49,8 @@ export default function TripCard({ trip, onDelete }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loadingSubscription, setLoadingSubscription] = useState(false);
+  const [subscriptionId, setSubscriptionId] = useState(null);
   const openMenu = Boolean(anchorEl);
 
   useEffect(() => {
@@ -64,8 +66,9 @@ export default function TripCard({ trip, onDelete }) {
           
           // Check subscription status
           if (trip.author.id !== user.id) {
-            const subResponse = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${user.id}&target_user=${trip.author.id}`);
-            setIsSubscribed(subResponse.data.length > 0);
+            const subId = await getSubscriptionStatus(user.id, trip.author.id);
+            setIsSubscribed(!!subId);
+            setSubscriptionId(subId);
           }
         } catch (err) {
           console.error('Ошибка проверки статуса:', err);
@@ -151,15 +154,27 @@ export default function TripCard({ trip, onDelete }) {
         return;
       }
       
+      setLoadingSubscription(true);
+      
       if (isSubscribed) {
-        await unsubscribeFromUser(trip.author.id);
+        await unsubscribeFromUser(subscriptionId);
+        setIsSubscribed(false);
+        setSubscriptionId(null);
       } else {
-        await subscribeToUser(trip.author.id);
+        const response = await subscribeToUser(trip.author.id);
+        setIsSubscribed(true);
+        setSubscriptionId(response.data.id);
       }
-      setIsSubscribed(!isSubscribed);
+      
+      if (onSubscriptionChange) {
+        onSubscriptionChange(trip.author.id, !isSubscribed);
+      }
+      
     } catch (error) {
       console.error('Ошибка подписки:', error);
       setError('Не удалось изменить подписку');
+    } finally {
+      setLoadingSubscription(false);
     }
   };
 
@@ -182,25 +197,25 @@ export default function TripCard({ trip, onDelete }) {
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ position: 'relative' }}>
-      <CardMedia
-    component={Link}
-    to={`/trips/${trip.id}`}
-    image={trip.main_image ? `http://localhost:8000${trip.main_image}` : '/placeholder.jpg'}
-    height="200"
-    sx={{ objectFit: 'cover' }}
-  />
-  {(user && (user.id === trip.author.id || user.is_staff)) && (
-    <IconButton
-      aria-label="more"
-      aria-controls="long-menu"
-      aria-haspopup="true"
-      onClick={handleMenuClick}
-      sx={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.7)' }}
-    >
-      <MoreVert />
-    </IconButton>
-  )}
-</Box>
+        <CardMedia
+          component={Link}
+          to={`/trips/${trip.id}`}
+          image={trip.main_image ? `http://localhost:8000${trip.main_image}` : '/placeholder.jpg'}
+          height="200"
+          sx={{ objectFit: 'cover', height: '200px' }}
+        />
+        {(user && (user.id === trip.author.id || user.is_staff)) && (
+          <IconButton
+            aria-label="more"
+            aria-controls="long-menu"
+            aria-haspopup="true"
+            onClick={handleMenuClick}
+            sx={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.7)' }}
+          >
+            <MoreVert />
+          </IconButton>
+        )}
+      </Box>
       
       <Menu
         id="long-menu"
@@ -228,12 +243,12 @@ export default function TripCard({ trip, onDelete }) {
         </Typography>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-  {trip.description ? 
-    (trip.description.length > 100 
-      ? `${trip.description.substring(0, 100)}...` 
-      : trip.description)
-    : 'Описание отсутствует'}
-</Typography>
+          {trip.description ? 
+            (trip.description.length > 100 
+              ? `${trip.description.substring(0, 100)}...` 
+              : trip.description)
+            : 'Описание отсутствует'}
+        </Typography>
         
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
           {trip.tags.map(tag => (
@@ -262,9 +277,16 @@ export default function TripCard({ trip, onDelete }) {
               size="small" 
               variant={isSubscribed ? "outlined" : "contained"}
               onClick={handleSubscribe}
+              disabled={loadingSubscription}
               sx={{ ml: 'auto' }}
             >
-              {isSubscribed ? 'Отписаться' : 'Подписаться'}
+              {loadingSubscription ? (
+                <CircularProgress size={24} />
+              ) : isSubscribed ? (
+                'Отписаться'
+              ) : (
+                'Подписаться'
+              )}
             </Button>
           )}
         </Box>

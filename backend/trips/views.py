@@ -70,64 +70,67 @@ class WishlistViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError({"detail": "Этот пост уже в избранном"})
         serializer.save(user=self.request.user)
 
-    @action(detail=False, methods=['post'])
-    def download(self, request):
-        serializer = PDFDownloadSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        trip_ids = serializer.validated_data['trip_ids']
-        format_type = serializer.validated_data['format']
-        
-        trips = Trip.objects.filter(
-            id__in=trip_ids,
-            wishlists__user=request.user
-        ).prefetch_related('locations', 'author', 'images')
-        
-        if not trips.exists():
-            return Response(
-                {"detail": "Не найдено поездок для скачивания"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+# trips/views.py (WishlistViewSet)
 
-        if format_type == 'pdf':
-            buffer = BytesIO()
-            p = canvas.Canvas(buffer)
-            
-            p.setFont("Helvetica-Bold", 16)
-            p.drawString(100, 800, "Ваше избранное")
-            
-            p.setFont("Helvetica", 12)
-            y_position = 750
-            
-            for trip in trips:
-                p.drawString(100, y_position, f"- {trip.title}")
-                p.drawString(120, y_position - 15, f"Автор: {trip.author.username}")
-                p.drawString(120, y_position - 30, f"Дата: {trip.created_at.strftime('%d.%m.%Y')}")
-                p.drawString(120, y_position - 45, f"Описание: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}")
-                y_position -= 70
-            
-            p.save()
-            buffer.seek(0)
-            response = Response(buffer.getvalue(), content_type='application/pdf')
-            response['Content-Disposition'] = 'attachment; filename="wishlist.pdf"'
-            return response
-        
-        elif format_type == 'txt':
-            content = "Ваше избранное:\n\n"
-            for trip in trips:
-                content += f"- {trip.title}\n"
-                content += f"  Автор: {trip.author.username}\n"
-                content += f"  Дата: {trip.created_at.strftime('%d.%m.%Y')}\n"
-                content += f"  Описание: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}\n\n"
-            
-            response = Response(content, content_type='text/plain')
-            response['Content-Disposition'] = 'attachment; filename="wishlist.txt"'
-            return response
-        
+@action(detail=False, methods=['post'])
+def download(self, request):
+    serializer = PDFDownloadSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    trip_ids = serializer.validated_data['trip_ids']
+    format_type = serializer.validated_data['format']
+    
+    # Используем правильное имя related_name - trip_wishlists
+    trips = Trip.objects.filter(
+        id__in=trip_ids,
+        trip_wishlists__user=request.user
+    ).prefetch_related('author', 'images')
+    
+    if not trips.exists():
         return Response(
-            {"detail": "Неподдерживаемый формат"},
-            status=status.HTTP_400_BAD_REQUEST
+            {"detail": "Не найдено поездок для скачивания"},
+            status=status.HTTP_404_NOT_FOUND
         )
+
+    if format_type == 'pdf':
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer)
+        
+        p.setFont("Helvetica-Bold", 16)
+        p.drawString(100, 800, "Ваше избранное")
+        
+        p.setFont("Helvetica", 12)
+        y_position = 750
+        
+        for trip in trips:
+            p.drawString(100, y_position, f"- {trip.title}")
+            p.drawString(120, y_position - 15, f"Автор: {trip.author.username}")
+            p.drawString(120, y_position - 30, f"Дата: {trip.created_at.strftime('%d.%m.%Y')}")
+            p.drawString(120, y_position - 45, f"Описание: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}")
+            y_position -= 70
+        
+        p.save()
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="wishlist.pdf"'
+        return response
+    
+    elif format_type == 'txt':
+        content = "Ваше избранное:\n\n"
+        for trip in trips:
+            content += f"- {trip.title}\n"
+            content += f"  Автор: {trip.author.username}\n"
+            content += f"  Дата: {trip.created_at.strftime('%d.%m.%Y')}\n"
+            content += f"  Описание: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}\n\n"
+        
+        response = HttpResponse(content, content_type='text/plain')
+        response['Content-Disposition'] = 'attachment; filename="wishlist.txt"'
+        return response
+    
+    return Response(
+        {"detail": "Неподдерживаемый формат"},
+        status=status.HTTP_400_BAD_REQUEST
+    )
 
 class SubscriptionTripViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TripSerializer

@@ -75,8 +75,9 @@ export default function Subscriptions() {
   const handleUnsubscribe = async (subscriptionId) => {
     try {
       await unsubscribeFromUser(subscriptionId);
-      setSubscriptions(subscriptions.filter(sub => sub.id !== subscriptionId));
+      setSubscriptions(prev => prev.filter(sub => sub.id !== subscriptionId));
       
+      // Обновляем ленту
       const tripsRes = await axios.get('http://localhost:8000/api/subscription-trips/', {
         headers: { Authorization: `Token ${localStorage.getItem('token')}` }
       });

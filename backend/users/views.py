@@ -54,10 +54,16 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         serializer.save(subscriber=self.request.user, target_user=target_user)
 
     def destroy(self, request, *args, **kwargs):
-        subscription = self.get_object()
-        if subscription.subscriber != request.user:
+        try:
+            subscription = self.get_object()
+            if subscription.subscriber != request.user:
+                return Response(
+                    {"detail": "You can only unsubscribe from your own subscriptions"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            return super().destroy(request, *args, **kwargs)
+        except Exception as e:
             return Response(
-                {"detail": "You can only unsubscribe from your own subscriptions"},
-                status=status.HTTP_403_FORBIDDEN
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        return super().destroy(request, *args, **kwargs)

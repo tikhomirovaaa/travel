@@ -1,5 +1,4 @@
-// Home.jsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useContext } from 'react';
 import { 
   Container, 
   Typography,  
@@ -15,6 +14,7 @@ import { getTrips, getWishlist } from '../api';
 import TripCard from '../components/TripCard';
 import { useAuth } from '../context/AuthContext';
 import CreateTripForm from '../components/CreateTripForm';
+import { AuthContext } from '../context/AuthContext';
 
 export default function Home() {
   const { user, authChecked } = useAuth();
@@ -25,6 +25,16 @@ export default function Home() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0); 
   const tripsPerPage = 6;
+
+  const handleSubscriptionChange = (authorId, isSubscribed) => {
+    setTrips(prevTrips => 
+      prevTrips.map(trip => 
+        trip.author.id === authorId 
+          ? { ...trip, is_subscribed: isSubscribed } 
+          : trip
+      )
+    );
+  };
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -149,7 +159,11 @@ export default function Home() {
             {trips.length > 0 ? (
               trips.map(trip => (
                 <Grid item xs={12} sm={6} md={4} key={trip.id}>
-                  <TripCard trip={trip} onDelete={fetchTrips} />
+                  <TripCard 
+                    trip={trip} 
+                    onDelete={fetchTrips}
+                    onSubscriptionChange={handleSubscriptionChange}
+                  />
                 </Grid>
               ))
             ) : (

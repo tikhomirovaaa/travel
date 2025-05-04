@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   Container, 
   Typography,  
@@ -31,18 +31,19 @@ export default function WishList() {
   const [format, setFormat] = useState('pdf');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloading, setDownloading] = useState(false);
 
   const fetchWishlist = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await getWishlist();
-      // Добавляем проверку на наличие данных
       const validatedWishlist = response.data.map(item => ({
         ...item,
         trip: {
           ...item.trip,
-          author: item.trip.author || { username: 'Неизвестный пользователь' }
+          author: item.trip.author || { username: 'Неизвестный пользователь' },
+          image: item.trip.image || '/placeholder.jpg'
         }
       }));
       setWishlist(validatedWishlist);
@@ -80,13 +81,12 @@ export default function WishList() {
         return;
       }
       
+      setDownloading(true);
+      
       const response = await downloadWishlist(selectedTrips, format);
       
-      const blob = new Blob([response.data], {
-        type: format === 'pdf' ? 'application/pdf' : 'text/plain'
-      });
-      
-      const url = window.URL.createObjectURL(blob);
+      // Создаем URL для скачивания
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `wishlist.${format}`);
@@ -98,7 +98,9 @@ export default function WishList() {
       setOpenDownloadDialog(false);
     } catch (err) {
       console.error('Ошибка загрузки избранного:', err);
-      setError(err.response?.data?.detail || 'Не удалось загрузить избранное');
+      setError('Не удалось скачать избранное');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -183,7 +185,6 @@ export default function WishList() {
           
           <Grid container spacing={4}>
             {wishlist.map(item => {
-              // Добавляем защитные проверки
               const trip = item.trip || {};
               const author = trip.author || { username: 'Неизвестный пользователь' };
               const imageUrl = trip.image ? `http://localhost:8000${trip.image}` : '/placeholder.jpg';
@@ -273,7 +274,13 @@ export default function WishList() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDownloadDialog(false)}>Отмена</Button>
-          <Button onClick={handleDownload} variant="contained">Скачать</Button>
+          <Button 
+            onClick={handleDownload} 
+            variant="contained"
+            disabled={downloading}
+          >
+            {downloading ? <CircularProgress size={24} /> : 'Скачать'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

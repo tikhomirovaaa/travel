@@ -9,6 +9,7 @@ class Location(models.Model):
     def __str__(self):
         return f"{self.name}, {self.country}"
 
+
 class Trip(models.Model):
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -17,10 +18,13 @@ class Trip(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.TextField()
-    image = models.ImageField(upload_to='trips/')
-    locations = models.ManyToManyField(Location, through='TripLocation')
+    image = models.ImageField(upload_to='trips/')  # Убедитесь что это поле правильно определено
     created_at = models.DateTimeField(auto_now_add=True)
-    likes = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_trips', blank=True)
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='liked_trips',
+        blank=True
+    )
     tags = TaggableManager(blank=True)
 
     def __str__(self):
@@ -29,6 +33,20 @@ class Trip(models.Model):
     @property
     def total_likes(self):
         return self.likes.count()
+
+    @property
+    def main_image(self):
+        return self.images.first()
+
+class TripImage(models.Model):
+    trip = models.ForeignKey(Trip, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='trips/')
+    is_main = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if self.is_main:
+            self.trip.images.update(is_main=False)
+        super().save(*args, **kwargs)
 
 class TripLocation(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE)

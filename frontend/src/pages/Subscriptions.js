@@ -1,4 +1,3 @@
-// Subscriptions.jsx
 import React, { useEffect, useState, useContext } from 'react';
 import { 
   Container, 
@@ -18,6 +17,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import TripCard from '../components/TripCard';
+import { unsubscribeFromUser } from '../api';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -72,13 +72,15 @@ export default function Subscriptions() {
     fetchData();
   }, [user]);
 
-  const handleUnsubscribe = async (id) => {
+  const handleUnsubscribe = async (subscriptionId) => {
     try {
-      await axios.delete(`http://localhost:8000/api/subscriptions/${id}/`, {
+      await unsubscribeFromUser(subscriptionId);
+      setSubscriptions(subscriptions.filter(sub => sub.id !== subscriptionId));
+      
+      const tripsRes = await axios.get('http://localhost:8000/api/subscription-trips/', {
         headers: { Authorization: `Token ${localStorage.getItem('token')}` }
       });
-      setSubscriptions(subscriptions.filter(sub => sub.id !== id));
-      setTrips(trips.filter(trip => trip.author.id !== id));
+      setTrips(tripsRes.data);
     } catch (error) {
       console.error('Ошибка отписки:', error);
     }

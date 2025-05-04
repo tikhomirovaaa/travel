@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, 
@@ -19,12 +19,15 @@ import {
   List,
   ListItem,
   ListItemAvatar,
-  ListItemText
+  ListItemText,
+  IconButton,
+  Badge
 } from '@mui/material';
+import { PhotoCamera, Edit } from '@mui/icons-material';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { AuthContext } from '../context/AuthContext';
 import TripCard from '../components/TripCard';
-import { updateUser, subscribeToUser, unsubscribeFromUser } from '../api';
+import { updateUser, subscribeToUser, unsubscribeFromUser, getCurrentUser } from '../api';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -49,7 +52,7 @@ function TabPanel(props) {
 export default function Profile() {
   const { username } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser, setUser, logout } = useContext(AuthContext);
   const [profileUser, setProfileUser] = useState(null);
   const [trips, setTrips] = useState([]);
   const [tabValue, setTabValue] = useState(0);
@@ -66,53 +69,44 @@ export default function Profile() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [error, setError] = useState(null);
 
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Загрузка данных пользователя
-        const userRes = await axios.get(`http://localhost:8000/api/users/?username=${username}`);
-        
-        if (!userRes.data || userRes.data.length === 0) {
-          throw new Error('Пользователь не найден');
-        }
-        
-        const userData = userRes.data[0];
-        setProfileUser(userData);
+        const userRes = await axios.get(`http://localhost:8000/api/users/${username}/`);
+        setProfileUser(userRes.data);
         setEditData({
-          username: userData.username,
-          bio: userData.bio || ''
+          username: userRes.data.username,
+          bio: userRes.data.bio || ''
         });
-        setAvatarPreview(userData.avatar ? `http://localhost:8000${userData.avatar}` : '');
+        setAvatarPreview(userRes.data.avatar ? `http://localhost:8000${userRes.data.avatar}` : '');
         
-        // Загрузка поездок пользователя
-        const tripsRes = await axios.get(`http://localhost:8000/api/trips/?author=${userData.id}`);
-        setTrips(tripsRes.data.results || tripsRes.data || []);
+        const tripsRes = await axios.get(`http://localhost:8000/api/trips/?user=${userRes.data.id}`);
+        setTrips(tripsRes.data);
         
-        // Проверка подписки текущего пользователя
-        if (currentUser && currentUser.id !== userData.id) {
-          try {
-            const subRes = await axios.get(
-              `http://localhost:8000/api/subscriptions/?subscriber=${currentUser.id}&target_user=${userData.id}`
-            );
-            setIsSubscribed(subRes.data.length > 0);
-          } catch (subError) {
-            console.error('Ошибка проверки подписки:', subError);
-          }
-        }
-        
-        // Загрузка подписчиков
-        const subsRes = await axios.get(`http://localhost:8000/api/subscriptions/?target_user=${userData.id}`);
+        const subsRes = await axios.get(`http://localhost:8000/api/subscriptions/?target_user=${userRes.data.id}`);
         setSubscribers(subsRes.data || []);
         
-        // Загрузка подписок пользователя
-        const subscrRes = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${userData.id}`);
+        const subscrRes = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${userRes.data.id}`);
         setSubscriptions(subscrRes.data || []);
+        
+        if (currentUser) {
+          const isSub = subsRes.data.some(sub => sub.subscriber.id === currentUser.id);
+          setIsSubscribed(isSub);
+        }
       } catch (error) {
         console.error('Ошибка загрузки профиля:', error);
-        setError(error.message || 'Не удалось загрузить профиль');
+        setError(error.response?.data?.detail || 'Не удалось загрузить профиль');
       } finally {
         setLoading(false);
       }
@@ -128,26 +122,29 @@ export default function Profile() {
         return;
       }
       
+      const existingSubscription = subscribers.find(
+        sub => sub.subscriber.id === currentUser.id
+      );
+      
       if (isSubscribed) {
-        await unsubscribeFromUser(profileUser.id);
+        await unsubscribeFromUser(existingSubscription.id);
       } else {
         await subscribeToUser(profileUser.id);
       }
+      
+      const subsRes = await axios.get(`http://localhost:8000/api/subscriptions/?target_user=${profileUser.id}`);
+      setSubscribers(subsRes.data || []);
+      
+      const subscrRes = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${currentUser.id}`);
+      setSubscriptions(subscrRes.data || []);
+      
       setIsSubscribed(!isSubscribed);
     } catch (error) {
       console.error('Ошибка подписки:', error);
-      setError('Не удалось обновить подписку');
+      setError('Не удалось изменить подписку');
     }
   };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
-    }
-  };
-
+  
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
@@ -155,28 +152,37 @@ export default function Profile() {
       
       const formData = new FormData();
       formData.append('username', editData.username);
-      formData.append('bio', editData.bio);
+      formData.append('bio', editData.bio || '');
+      
       if (avatarFile) {
         formData.append('avatar', avatarFile);
+      } else if (avatarPreview === '' && profileUser.avatar) {
+        // If user removed avatar
+        formData.append('avatar', '');
       }
       
-      const updatedUser = await updateUser(formData);
-      setProfileUser(updatedUser.data);
+      const response = await updateUser(formData);
+      setProfileUser(response.data);
       setOpenEdit(false);
       
-      // Если пользователь редактировал свой профиль, обновляем данные в контексте
-      if (currentUser && currentUser.id === updatedUser.data.id) {
-        logout();
-        navigate('/login');
+      // Update current user in context
+      const userResponse = await getCurrentUser();
+      setUser(userResponse.data);
+      
+      // Update avatar preview
+      if (avatarFile) {
+        setAvatarPreview(URL.createObjectURL(avatarFile));
+      } else if (!response.data.avatar) {
+        setAvatarPreview('');
       }
     } catch (error) {
       console.error('Ошибка обновления профиля:', error);
-      setError('Не удалось обновить профиль');
+      setError(error.response?.data || 'Не удалось обновить профиль');
     } finally {
       setLoading(false);
     }
   };
-
+  
   if (loading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -210,16 +216,50 @@ export default function Profile() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, gap: 4 }}>
-        <Avatar 
-          src={avatarPreview || (profileUser.avatar ? `http://localhost:8000${profileUser.avatar}` : '')} 
-          sx={{ width: 120, height: 120 }}
-        />
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, gap: 4, position: 'relative' }}>
+        <Badge
+          overlap="circular"
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          badgeContent={
+            currentUser?.id === profileUser.id && (
+              <IconButton 
+                component="label"
+                size="small"
+                sx={{ 
+                  bgcolor: 'background.paper',
+                  '&:hover': { bgcolor: 'background.default' }
+                }}
+              >
+                <PhotoCamera fontSize="small" />
+                <input 
+                  type="file" 
+                  hidden 
+                  accept="image/*" 
+                  onChange={handleImageChange}
+                />
+              </IconButton>
+            )
+          }
+        >
+          <Avatar 
+            src={avatarPreview || (profileUser.avatar ? `http://localhost:8000${profileUser.avatar}` : '')} 
+            sx={{ width: 120, height: 120 }}
+          />
+        </Badge>
         
         <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h3" component="h1">
-            {profileUser.username}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="h3" component="h1">
+              {profileUser.username}
+            </Typography>
+            
+            {currentUser?.id === profileUser.id && (
+              <IconButton onClick={() => setOpenEdit(true)}>
+                <Edit />
+              </IconButton>
+            )}
+          </Box>
+          
           <Typography variant="body1" sx={{ mt: 1 }}>
             {profileUser.bio || 'Нет информации о себе'}
           </Typography>
@@ -231,26 +271,20 @@ export default function Profile() {
             <Typography variant="body1">
               <strong>{subscriptions.length}</strong> Подписок
             </Typography>
+            <Typography variant="body1">
+              <strong>{trips.length}</strong> Поездок
+            </Typography>
           </Box>
           
           {currentUser && currentUser.id === profileUser.id ? (
-            <>
-              <Button 
-                variant="outlined" 
-                sx={{ mt: 2, mr: 2 }}
-                onClick={() => setOpenEdit(true)}
-              >
-                Редактировать профиль
-              </Button>
-              <Button 
-                variant="outlined" 
-                color="error"
-                sx={{ mt: 2 }}
-                onClick={logout}
-              >
-                Выйти
-              </Button>
-            </>
+            <Button 
+              variant="outlined" 
+              color="error"
+              sx={{ mt: 2 }}
+              onClick={logout}
+            >
+              Выйти
+            </Button>
           ) : currentUser ? (
             <Button 
               variant="contained" 

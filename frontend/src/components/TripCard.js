@@ -182,25 +182,25 @@ export default function TripCard({ trip, onDelete }) {
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ position: 'relative' }}>
-        <CardMedia
-          component={Link}
-          to={`/trips/${trip.id}`}
-          image={`http://localhost:8000${trip.image}`}
-          height="200"
-          sx={{ objectFit: 'cover' }}
-        />
-        {(user && (user.id === trip.author.id || user.is_staff)) && (
-          <IconButton
-            aria-label="more"
-            aria-controls="long-menu"
-            aria-haspopup="true"
-            onClick={handleMenuClick}
-            sx={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.7)' }}
-          >
-            <MoreVert />
-          </IconButton>
-        )}
-      </Box>
+      <CardMedia
+    component={Link}
+    to={`/trips/${trip.id}`}
+    image={trip.main_image ? `http://localhost:8000${trip.main_image}` : '/placeholder.jpg'}
+    height="200"
+    sx={{ objectFit: 'cover' }}
+  />
+  {(user && (user.id === trip.author.id || user.is_staff)) && (
+    <IconButton
+      aria-label="more"
+      aria-controls="long-menu"
+      aria-haspopup="true"
+      onClick={handleMenuClick}
+      sx={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.7)' }}
+    >
+      <MoreVert />
+    </IconButton>
+  )}
+</Box>
       
       <Menu
         id="long-menu"

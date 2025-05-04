@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Container, 
-  Typography, 
+  Typography,  
   Grid, 
   Card, 
   CardContent, 
@@ -9,11 +9,10 @@ import {
   Button, 
   Box,
   Checkbox,
-  FormControlLabel,
   Dialog,
   DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
   CircularProgress,
   Snackbar,
   Alert,
@@ -33,20 +32,20 @@ export default function WishList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (authChecked && user) {
-      fetchWishlist();
-    } else if (authChecked) {
-      setLoading(false);
-    }
-  }, [user, authChecked]);
-
   const fetchWishlist = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await getWishlist();
-      setWishlist(response.data);
+      // Добавляем проверку на наличие данных
+      const validatedWishlist = response.data.map(item => ({
+        ...item,
+        trip: {
+          ...item.trip,
+          author: item.trip.author || { username: 'Неизвестный пользователь' }
+        }
+      }));
+      setWishlist(validatedWishlist);
     } catch (err) {
       console.error('Ошибка загрузки избранного:', err);
       setError(err.response?.data?.detail || 'Не удалось загрузить избранное');
@@ -55,11 +54,11 @@ export default function WishList() {
     }
   };
 
-  const handleSelectTrip = (tripId) => {
+  const handleSelectTrip = (tripId, isSelected) => {
     setSelectedTrips(prev => 
-      prev.includes(tripId) 
-        ? prev.filter(id => id !== tripId) 
-        : [...prev, tripId]
+      isSelected 
+        ? [...prev, tripId] 
+        : prev.filter(id => id !== tripId)
     );
   };
 
@@ -76,40 +75,40 @@ export default function WishList() {
 
   const handleDownload = async () => {
     try {
-      // Фильтруем и проверяем выбранные поездки
-      const validTripIds = wishlist
-        .filter(item => selectedTrips.includes(item.trip.id))
-        .map(item => item.trip.id);
-  
-      if (validTripIds.length === 0) {
+      if (selectedTrips.length === 0) {
         setError('Выберите хотя бы одну поездку для скачивания');
         return;
       }
-  
-      // Используем импортированную функцию downloadWishlist
-      const response = await downloadWishlist(validTripIds, format);
       
-      // Создаем URL для скачивания
-      const url = window.URL.createObjectURL(
-        new Blob([response.data], {
-          type: format === 'pdf' ? 'application/pdf' : 'text/plain'
-        })
-      );
+      const response = await downloadWishlist(selectedTrips, format);
       
+      const blob = new Blob([response.data], {
+        type: format === 'pdf' ? 'application/pdf' : 'text/plain'
+      });
+      
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `избранное.${format}`);
+      link.setAttribute('download', `wishlist.${format}`);
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
       setOpenDownloadDialog(false);
     } catch (err) {
       console.error('Ошибка загрузки избранного:', err);
-      setError(err.response?.data?.message || 'Не удалось загрузить избранное');
+      setError(err.response?.data?.detail || 'Не удалось загрузить избранное');
     }
   };
 
-  if (!authChecked) {
+  useEffect(() => {
+    if (authChecked && user) {
+      fetchWishlist();
+    }
+  }, [authChecked, user]);
+
+  if (!authChecked || loading) {
     return (
       <Container sx={{ py: 4, textAlign: 'center' }}>
         <CircularProgress size={60} />
@@ -131,17 +130,6 @@ export default function WishList() {
         >
           Войти
         </Button>
-      </Container>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Container sx={{ py: 4, textAlign: 'center' }}>
-        <CircularProgress size={60} />
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          Загрузка вашего избранного...
-        </Typography>
       </Container>
     );
   }
@@ -179,65 +167,83 @@ export default function WishList() {
         </Box>
       ) : (
         <>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="body1">
+              Выбрано: {selectedTrips.length} из {wishlist.length}
+            </Typography>
             <Button 
               variant="contained" 
               color="primary"
               disabled={selectedTrips.length === 0}
               onClick={() => setOpenDownloadDialog(true)}
             >
-              Скачать выбранное ({selectedTrips.length})
+              Скачать выбранное
             </Button>
           </Box>
           
           <Grid container spacing={4}>
-            {wishlist.map(item => (
-              <Grid item xs={12} sm={6} md={4} key={item.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardMedia
-                    component={Link}
-                    to={`/trips/${item.trip.id}`}
-                    image={item.trip.image ? `http://localhost:8000${item.trip.image}` : '/placeholder.jpg'}
-                    height="200"
-                    sx={{ objectFit: 'cover' }}
-                  />
-                  
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography 
-                      gutterBottom 
-                      variant="h5" 
-                      component={Link} 
-                      to={`/trips/${item.trip.id}`}
-                      sx={{ 
-                        textDecoration: 'none', 
-                        color: 'inherit',
-                        '&:hover': { color: 'primary.main' }
-                      }}
-                    >
-                      {item.trip.title}
-                    </Typography>
-                    
-                    <Typography variant="body2" color="text.secondary">
-                      {item.trip.description ? `${item.trip.description.substring(0, 100)}...` : 'Нет описания'}
-                    </Typography>
-                  </CardContent>
-                  
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
-                    <Checkbox
-                      checked={selectedTrips.includes(item.trip.id)}
-                      onChange={() => handleSelectTrip(item.trip.id)}
+            {wishlist.map(item => {
+              // Добавляем защитные проверки
+              const trip = item.trip || {};
+              const author = trip.author || { username: 'Неизвестный пользователь' };
+              const imageUrl = trip.image ? `http://localhost:8000${trip.image}` : '/placeholder.jpg';
+              const description = trip.description || 'Нет описания';
+              const shortDescription = description.length > 100 
+                ? `${description.substring(0, 100)}...` 
+                : description;
+
+              return (
+                <Grid item xs={12} sm={6} md={4} key={item.id}>
+                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <CardMedia
+                      component={Link}
+                      to={`/trips/${trip.id}`}
+                      image={imageUrl}
+                      height="200"
+                      sx={{ objectFit: 'cover' }}
                     />
                     
-                    <IconButton 
-                      onClick={() => handleRemoveFromWishlist(item.id, item.trip.id)}
-                      color="error"
-                    >
-                      <Bookmark />
-                    </IconButton>
-                  </Box>
-                </Card>
-              </Grid>
-            ))}
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Typography 
+                        gutterBottom 
+                        variant="h5" 
+                        component={Link} 
+                        to={`/trips/${trip.id}`}
+                        sx={{ 
+                          textDecoration: 'none', 
+                          color: 'inherit',
+                          '&:hover': { color: 'primary.main' }
+                        }}
+                      >
+                        {trip.title || 'Без названия'}
+                      </Typography>
+                      
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {shortDescription}
+                      </Typography>
+                      
+                      <Typography variant="caption" color="text.secondary">
+                        Автор: {author.username}
+                      </Typography>
+                    </CardContent>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
+                      <Checkbox
+                        checked={selectedTrips.includes(trip.id)}
+                        onChange={(e) => handleSelectTrip(trip.id, e.target.checked)}
+                      />
+                      
+                      <IconButton 
+                        onClick={() => handleRemoveFromWishlist(item.id, trip.id)}
+                        color="error"
+                      >
+                        <Bookmark />
+                      </IconButton>
+                    </Box>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
         </>
       )}
@@ -245,24 +251,25 @@ export default function WishList() {
       <Dialog open={openDownloadDialog} onClose={() => setOpenDownloadDialog(false)}>
         <DialogTitle>Скачать избранное</DialogTitle>
         <DialogContent>
-          <FormControlLabel
-            control={
-              <Checkbox 
-                checked={format === 'pdf'} 
-                onChange={() => setFormat('pdf')} 
-              />
-            }
-            label="PDF"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox 
-                checked={format === 'txt'} 
-                onChange={() => setFormat('txt')} 
-              />
-            }
-            label="Текстовый файл"
-          />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body1">
+              Выбрано постов: {selectedTrips.length}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button 
+                variant={format === 'pdf' ? 'contained' : 'outlined'}
+                onClick={() => setFormat('pdf')}
+              >
+                PDF
+              </Button>
+              <Button 
+                variant={format === 'txt' ? 'contained' : 'outlined'}
+                onClick={() => setFormat('txt')}
+              >
+                Текстовый файл
+              </Button>
+            </Box>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDownloadDialog(false)}>Отмена</Button>

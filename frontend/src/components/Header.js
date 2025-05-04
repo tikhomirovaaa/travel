@@ -1,12 +1,13 @@
-// Header.jsx
 import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import CreateTripForm from './CreateTripForm';
+import { AccountCircle } from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext'; // Добавляем импорт useAuth
 
 export default function Header() {
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
+  const { user } = useAuth(); // Получаем user из контекста
   const [openCreateTrip, setOpenCreateTrip] = useState(false);
 
   const handleLogout = () => {
@@ -18,6 +19,8 @@ export default function Header() {
     e.preventDefault();
     navigate('/', { state: { refresh: true } });
   };
+
+  const token = localStorage.getItem('token');
 
   return (
     <>
@@ -41,7 +44,12 @@ export default function Header() {
                 <Button color="inherit" component={Link} to="/subscriptions">
                   Подписки
                 </Button>
-                <Button color="inherit" component={Link} to="/profile">
+                <Button 
+                  color="inherit" 
+                  component={Link} 
+                  to={`/profile/${user?.username}`}
+                  startIcon={<AccountCircle />}
+                >
                   Профиль
                 </Button>
                 <Button color="inherit" onClick={handleLogout}>

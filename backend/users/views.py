@@ -4,12 +4,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework import serializers
 from .models import User, Subscription
-from .serializers import UserSerializer, SubscriptionSerializer, UserUpdateSerializer
+from .serializers import UserProfileSerializer, SubscriptionSerializer, UserUpdateSerializer
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = UserProfileSerializer
+    lookup_field = 'username'
+    
+    def get_queryset(self):
+        return User.objects.all()
     
     @action(detail=False, methods=['get', 'put'], permission_classes=[IsAuthenticated])
     def me(self, request):
@@ -36,13 +42,22 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         return Subscription.objects.filter(subscriber=self.request.user)
 
     def perform_create(self, serializer):
-        target_user = get_object_or_404(User, id=self.request.data.get('target_user'))
+        target_user_id = self.request.data.get('target_user')
+        target_user = get_object_or_404(User, id=target_user_id)
+        
+        if target_user.id == self.request.user.id:
+            raise serializers.ValidationError({"detail": "You cannot subscribe to yourself"})
+        
         if Subscription.objects.filter(subscriber=self.request.user, target_user=target_user).exists():
             raise serializers.ValidationError({"detail": "You are already subscribed to this user"})
+            
         serializer.save(subscriber=self.request.user, target_user=target_user)
 
-    @action(detail=False, methods=['get'])
-    def subscribers(self, request):
-        subscribers = User.objects.filter(subscribers__target_user=request.user)
-        serializer = self.get_serializer(subscribers, many=True)
-        return Response(serializer.data)
+    def destroy(self, request, *args, **kwargs):
+        subscription = self.get_object()
+        if subscription.subscriber != request.user:
+            return Response(
+                {"detail": "You can only unsubscribe from your own subscriptions"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)

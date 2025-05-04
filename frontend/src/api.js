@@ -28,8 +28,8 @@ export const subscribeToUser = (userId) => {
   return api.post('subscriptions/', { target_user: userId });
 };
 
-export const unsubscribeFromUser = (userId) => {
-  return api.delete(`subscriptions/${userId}/`);
+export const unsubscribeFromUser = (subscriptionId) => {
+  return api.delete(`subscriptions/${subscriptionId}/`);
 };
 
 export const getSubscriptions = (userId) => {
@@ -39,20 +39,28 @@ export const getSubscriptions = (userId) => {
 export const getSubscribers = (userId) => {
   return api.get(`subscriptions/?target_user=${userId}`);
 };
+
 export const login = (credentials) => api.post('auth/token/login/', credentials);
 export const registerUser = (data) => api.post('auth/users/', data);
 export const logout = () => api.post('auth/token/logout/');
 export const getTrips = (params = {}) => api.get('trips/', { params });
 export const getTrip = (id) => api.get(`trips/${id}/`);
+// [Previous code remains the same until the createTrip function...]
+
 export const createTrip = (data) => {
   const formData = new FormData();
   
-  // Добавляем все поля явно
+  // Add basic fields
   formData.append('title', data.get('title'));
   formData.append('description', data.get('description'));
-  formData.append('image', data.get('image'));
   
-  // Обрабатываем теги
+  // Process images
+  const images = data.getAll('images');
+  images.forEach(image => {
+    if (image) formData.append('images', image);
+  });
+  
+  // Process tags
   const tags = data.getAll('tags');
   tags.forEach(tag => {
     if (tag) formData.append('tags', tag);
@@ -64,6 +72,15 @@ export const createTrip = (data) => {
     }
   });
 };
+
+export const handleSubscription = async (userId, isSubscribed, subscriptionId) => {
+  if (isSubscribed) {
+    return await unsubscribeFromUser(subscriptionId);
+  } else {
+    return await subscribeToUser(userId);
+  }
+};
+
 export const deleteTrip = (id) => api.delete(`trips/${id}/`);
 
 export const likeTrip = (id) => api.post(`trips/${id}/like/`);
@@ -112,9 +129,12 @@ export const addToWishlist = async (tripId, notes = '') => {
 };
 
 export const removeFromWishlist = (id) => api.delete(`wishlist/${id}/`);
-export const downloadWishlist = (tripIds, format) => 
-  api.post('wishlist/download/', { trip_ids: tripIds, format }, { 
+export const downloadWishlist = (tripIds, format) => {
+  return api.post('wishlist/download/', { 
+    trip_ids: tripIds,
+    format: format
+  }, { 
     responseType: format === 'pdf' ? 'blob' : 'text' 
   });
-
+};
 export default api;

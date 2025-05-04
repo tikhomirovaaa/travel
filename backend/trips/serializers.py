@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Trip, Location, Wishlist, Comment
+from .models import Trip, Location, Wishlist, Comment, TripImage
 from taggit.serializers import TagListSerializerField, TaggitSerializer
 from users.serializers import UserSerializer
 
@@ -33,6 +33,11 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ['id', 'author', 'text', 'created_at']
         read_only_fields = ['author', 'created_at']
 
+class TripImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TripImage
+        fields = ['id', 'image', 'is_main']
+
 class TripSerializer(TaggitSerializer, serializers.ModelSerializer):
     locations = LocationSerializer(many=True, read_only=True)
     author = UserSerializer(read_only=True)
@@ -40,9 +45,17 @@ class TripSerializer(TaggitSerializer, serializers.ModelSerializer):
     tags = TagListSerializerField()
     is_liked = serializers.SerializerMethodField()
     total_likes = serializers.IntegerField(read_only=True)
-    
+    images = TripImageSerializer(many=True, read_only=True)
+    main_image = serializers.SerializerMethodField()
+
+    def get_main_image(self, obj):
+        main_image = obj.images.filter(is_main=True).first()
+        if main_image:
+            return main_image.image.url
+        return None
+
     def validate(self, data):
-        required_fields = ['title', 'description', 'image']
+        required_fields = ['title', 'description']
         for field in required_fields:
             if not data.get(field):
                 raise serializers.ValidationError({field: "This field is required."})
@@ -54,9 +67,9 @@ class TripSerializer(TaggitSerializer, serializers.ModelSerializer):
     
     class Meta:
         model = Trip
-        fields = ['id', 'title', 'description', 'image', 'author', 
+        fields = ['id', 'title', 'description', 'author', 
                  'locations', 'created_at', 'tags', 'comments', 
-                 'is_liked', 'total_likes']
+                 'is_liked', 'total_likes', 'images', 'main_image']
     
     def get_is_liked(self, obj):
         request = self.context.get('request')
@@ -64,13 +77,29 @@ class TripSerializer(TaggitSerializer, serializers.ModelSerializer):
             return obj.likes.filter(id=request.user.id).exists()
         return False
 
+class WishlistTripSerializer(TaggitSerializer, serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
+    main_image = serializers.SerializerMethodField()
+    
+    def get_main_image(self, obj):
+        main_image = obj.images.filter(is_main=True).first()
+        if main_image:
+            return main_image.image.url
+        return None
+    
+    class Meta:
+        model = Trip
+        fields = ['id', 'title', 'description', 'author', 'created_at', 'main_image']
+
 class WishlistSerializer(serializers.ModelSerializer):
+    trip = WishlistTripSerializer(read_only=True)
+    
     class Meta:
         model = Wishlist
-        fields = ['id', 'user', 'trip', 'notes', 'created_at']
-        read_only_fields = ['user', 'created_at']
+        fields = ['id', 'trip', 'created_at']
+        read_only_fields = ['created_at']
 
 class WishlistCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wishlist
-        fields = ['trip', 'notes']
+        fields = ['trip']

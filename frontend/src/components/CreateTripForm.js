@@ -13,17 +13,19 @@ import {
   IconButton,
   Snackbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Grid,
+  Paper
 } from '@mui/material';
-import { PhotoCamera } from '@mui/icons-material';
+import { PhotoCamera, Close } from '@mui/icons-material';
 import { createTrip } from '../api';
 import { useNavigate } from 'react-router-dom';
 
 export default function CreateTripForm({ open, handleClose, onTripCreated }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState('');
+  const [images, setImages] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState(null);
@@ -31,11 +33,33 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
   const navigate = useNavigate();
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
+    const files = Array.from(e.target.files);
+    if (files.length + images.length > 5) {
+      setError('Можно загрузить не более 5 изображений');
+      return;
     }
+
+    const newImages = [...images];
+    const newPreviews = [...previews];
+
+    files.forEach(file => {
+      newImages.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+    });
+
+    setImages(newImages);
+    setPreviews(newPreviews);
+  };
+
+  const handleRemoveImage = (index) => {
+    const newImages = [...images];
+    const newPreviews = [...previews];
+    
+    newImages.splice(index, 1);
+    newPreviews.splice(index, 1);
+    
+    setImages(newImages);
+    setPreviews(newPreviews);
   };
 
   const handleAddTag = () => {
@@ -50,7 +74,7 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
   };
 
   const handleSubmit = async () => {
-    if (!title || !description || !image || tags.length === 0) {
+    if (!title || !description || images.length === 0 || tags.length === 0) {
       setError('Пожалуйста, заполните все обязательные поля');
       return;
     }
@@ -62,13 +86,8 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', description);
-      formData.append('image', image);
+      images.forEach(image => formData.append('images', image));
       tags.forEach(tag => formData.append('tags', tag));
-  
-      // Добавим логирование для отладки
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
   
       const response = await createTrip(formData);
       resetForm();
@@ -81,17 +100,17 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
       handleClose();
     } catch (error) {
       console.error('Ошибка создания поездки:', error);
-      // Более детальное отображение ошибки
       setError(error.response?.data || error.message || 'Не удалось создать поездку');
     } finally {
       setLoading(false);
     }
   };
+  
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setImage(null);
-    setPreview('');
+    setImages([]);
+    setPreviews([]);
     setTags([]);
     setTagInput('');
     setError(null);
@@ -144,50 +163,72 @@ export default function CreateTripForm({ open, handleClose, onTripCreated }) {
             error={!description && error}
           />
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 2 }}>
-            <IconButton 
-              color="primary" 
-              component="label"
-              sx={{ 
-                border: '1px dashed',
-                borderColor: error && !image ? 'error.main' : 'primary.main',
-                borderRadius: 1,
-                padding: 2
-              }}
-            >
-              <PhotoCamera sx={{ marginRight: 1 }} />
-              <Typography variant="body2">
-                {image ? image.name : 'Выберите изображение*'}
-              </Typography>
-              <input 
-                type="file" 
-                hidden 
-                accept="image/*" 
-                onChange={handleImageChange}
-                id="trip-image-input"
-                name="trip-image"
-                required
-              />
-            </IconButton>
-            {error && !image && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Изображения* (максимум 5)
+            </Typography>
+            <Grid container spacing={2}>
+              {previews.map((preview, index) => (
+                <Grid item xs={6} sm={4} key={index}>
+                  <Paper elevation={3} sx={{ position: 'relative' }}>
+                    <Avatar 
+                      src={preview} 
+                      variant="rounded" 
+                      sx={{ 
+                        width: '100%', 
+                        height: 150,
+                        objectFit: 'cover'
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      sx={{ 
+                        position: 'absolute', 
+                        top: 5, 
+                        right: 5,
+                        backgroundColor: 'rgba(255,255,255,0.7)'
+                      }}
+                      onClick={() => handleRemoveImage(index)}
+                    >
+                      <Close fontSize="small" />
+                    </IconButton>
+                  </Paper>
+                </Grid>
+              ))}
+              {previews.length < 5 && (
+                <Grid item xs={6} sm={4}>
+                  <IconButton 
+                    color="primary" 
+                    component="label"
+                    sx={{ 
+                      border: '1px dashed',
+                      borderColor: error && images.length === 0 ? 'error.main' : 'primary.main',
+                      borderRadius: 1,
+                      width: '100%',
+                      height: 150
+                    }}
+                  >
+                    <PhotoCamera sx={{ marginRight: 1 }} />
+                    <Typography variant="body2">
+                      Добавить изображение
+                    </Typography>
+                    <input 
+                      type="file" 
+                      hidden 
+                      accept="image/*" 
+                      onChange={handleImageChange}
+                      multiple
+                    />
+                  </IconButton>
+                </Grid>
+              )}
+            </Grid>
+            {error && images.length === 0 && (
               <Typography color="error" variant="caption">
-                Изображение обязательно
+                Необходимо добавить хотя бы одно изображение
               </Typography>
             )}
           </Box>
-          
-          {preview && (
-            <Avatar 
-              src={preview} 
-              variant="rounded" 
-              sx={{ 
-                width: '100%', 
-                height: 200, 
-                objectFit: 'cover',
-                marginBottom: 2
-              }}
-            />
-          )}
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2 }}>
             <TextField

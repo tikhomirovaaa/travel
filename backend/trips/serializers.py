@@ -100,6 +100,24 @@ class WishlistSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
 class WishlistCreateSerializer(serializers.ModelSerializer):
+    trip_id = serializers.IntegerField(write_only=True)
+
     class Meta:
         model = Wishlist
-        fields = ['trip']
+        fields = ['trip_id']
+        extra_kwargs = {
+            'trip_id': {'required': True}
+        }
+
+    def create(self, validated_data):
+        trip_id = validated_data.pop('trip_id')
+        try:
+            trip = Trip.objects.get(id=trip_id)
+        except Trip.DoesNotExist:
+            raise serializers.ValidationError({"trip_id": "Trip does not exist"})
+        
+        wishlist_item = Wishlist.objects.create(
+            trip=trip,
+            user=self.context['request'].user
+        )
+        return wishlist_item

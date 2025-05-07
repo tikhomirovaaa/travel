@@ -137,7 +137,7 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
       } else {
         const response = await addToWishlist(trip.id);
         setInWishlist(true);
-        setWishlistId(response.id);
+        setWishlistId(response.data.id);
       }
     } catch (error) {
       console.error('Ошибка:', error.response?.data);

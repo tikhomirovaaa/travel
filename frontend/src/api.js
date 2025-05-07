@@ -105,25 +105,14 @@ export const checkWishlist = async (tripId) => {
   }
 };
 
-export const addToWishlist = async (tripId, notes = '') => {
-  try {
-    const response = await api.post('wishlist/', {
-      trip: tripId,
-      notes: notes
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error adding to wishlist:', error);
-    throw error;
-  }
-};
-
+export const addToWishlist = (tripId) => api.post('wishlist/', { trip_id: tripId });
 export const removeFromWishlist = (id) => api.delete(`wishlist/${id}/`);
 export const downloadWishlist = (tripIds, format) => {
   return api.post('wishlist/download/', { trip_ids: tripIds, format }, {
     responseType: format === 'pdf' ? 'blob' : 'text'
   });
 };
+
 export const searchTripsByTag = (tag) => api.get(`trips/?tags=${tag}`);
 // Профиль
 export const updateProfile = (data) => {

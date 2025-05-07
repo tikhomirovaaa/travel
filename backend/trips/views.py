@@ -60,6 +60,14 @@ class WishlistViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Wishlist.objects.filter(user=self.request.user).select_related('trip')
 
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return WishlistCreateSerializer
+        return WishlistSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
     @action(detail=False, methods=['post'])
     def download(self, request):
         serializer = PDFDownloadSerializer(data=request.data)

@@ -38,15 +38,7 @@ export default function WishList() {
       setLoading(true);
       setError(null);
       const response = await getWishlist();
-      const validatedWishlist = response.data.map(item => ({
-        ...item,
-        trip: {
-          ...item.trip,
-          author: item.trip.author || { username: 'Неизвестный пользователь' },
-          image: item.trip.image || '/placeholder.jpg'
-        }
-      }));
-      setWishlist(validatedWishlist);
+      setWishlist(response.data);
     } catch (err) {
       console.error('Ошибка загрузки избранного:', err);
       setError(err.response?.data?.detail || 'Не удалось загрузить избранное');
@@ -85,7 +77,7 @@ export default function WishList() {
       
       const response = await downloadWishlist(selectedTrips, format);
       
-      // Создаем URL для скачивания
+      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -184,67 +176,61 @@ export default function WishList() {
           </Box>
           
           <Grid container spacing={4}>
-            {wishlist.map(item => {
-              const trip = item.trip || {};
-              const author = trip.author || { username: 'Неизвестный пользователь' };
-              const imageUrl = trip.image ? `http://localhost:8000${trip.image}` : '/placeholder.jpg';
-              const description = trip.description || 'Нет описания';
-              const shortDescription = description.length > 100 
-                ? `${description.substring(0, 100)}...` 
-                : description;
-
-              return (
-                <Grid item xs={12} sm={6} md={4} key={item.id}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <CardMedia
-                      component={Link}
-                      to={`/trips/${trip.id}`}
-                      image={imageUrl}
-                      height="200"
-                      sx={{ objectFit: 'cover' }}
+            {wishlist.map(item => (
+              <Grid item xs={12} sm={6} md={4} key={item.id}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardMedia
+                    component={Link}
+                    to={`/trips/${item.trip.id}`}
+                    image={item.trip.main_image ? `http://localhost:8000${item.trip.main_image}` : '/placeholder.jpg'}
+                    height="200"
+                    sx={{ objectFit: 'cover' }}
+                  />
+                  
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography 
+                      gutterBottom 
+                      variant="h5" 
+                      component={Link} 
+                      to={`/trips/${item.trip.id}`}
+                      sx={{ 
+                        textDecoration: 'none', 
+                        color: 'inherit',
+                        '&:hover': { color: 'primary.main' }
+                      }}
+                    >
+                      {item.trip.title}
+                    </Typography>
+                    
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      {item.trip.description ? 
+                        (item.trip.description.length > 100 
+                          ? `${item.trip.description.substring(0, 100)}...` 
+                          : item.trip.description)
+                        : 'Нет описания'}
+                    </Typography>
+                    
+                    <Typography variant="caption" color="text.secondary">
+                      Автор: {item.trip.author.username}
+                    </Typography>
+                  </CardContent>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
+                    <Checkbox
+                      checked={selectedTrips.includes(item.trip.id)}
+                      onChange={(e) => handleSelectTrip(item.trip.id, e.target.checked)}
                     />
                     
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography 
-                        gutterBottom 
-                        variant="h5" 
-                        component={Link} 
-                        to={`/trips/${trip.id}`}
-                        sx={{ 
-                          textDecoration: 'none', 
-                          color: 'inherit',
-                          '&:hover': { color: 'primary.main' }
-                        }}
-                      >
-                        {trip.title || 'Без названия'}
-                      </Typography>
-                      
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        {shortDescription}
-                      </Typography>
-                      
-                      <Typography variant="caption" color="text.secondary">
-                        Автор: {author.username}
-                      </Typography>
-                    </CardContent>
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2 }}>
-                      <Checkbox
-                        checked={selectedTrips.includes(trip.id)}
-                        onChange={(e) => handleSelectTrip(trip.id, e.target.checked)}
-                      />
-                      
-                      <IconButton 
-                        onClick={() => handleRemoveFromWishlist(item.id, trip.id)}
-                        color="error"
-                      >
-                        <Bookmark />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                </Grid>
-              );
-            })}
+                    <IconButton 
+                      onClick={() => handleRemoveFromWishlist(item.id, item.trip.id)}
+                      color="error"
+                    >
+                      <Bookmark />
+                    </IconButton>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
         </>
       )}

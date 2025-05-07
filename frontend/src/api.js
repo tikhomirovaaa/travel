@@ -108,9 +108,15 @@ export const checkWishlist = async (tripId) => {
 export const addToWishlist = (tripId) => api.post('wishlist/', { trip_id: tripId });
 export const removeFromWishlist = (id) => api.delete(`wishlist/${id}/`);
 export const downloadWishlist = (tripIds, format) => {
-  return api.post('wishlist/download/', { trip_ids: tripIds, format }, {
-    responseType: format === 'pdf' ? 'blob' : 'text'
-  });
+  return api.post('wishlist/download/', 
+    { trip_ids: tripIds, format },
+    { 
+      responseType: 'blob', // Всегда используем blob для получения файла
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  );
 };
 
 export const searchTripsByTag = (tag) => api.get(`trips/?tags=${tag}`);

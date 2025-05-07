@@ -77,7 +77,7 @@ export default function WishList() {
       
       const response = await downloadWishlist(selectedTrips, format);
       
-      // Create download link
+      // Создаем URL для скачивания
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -90,12 +90,12 @@ export default function WishList() {
       setOpenDownloadDialog(false);
     } catch (err) {
       console.error('Ошибка загрузки избранного:', err);
-      setError('Не удалось скачать избранное');
+      setError(err.response?.data?.detail || 'Не удалось скачать избранное');
     } finally {
       setDownloading(false);
     }
   };
-
+  
   useEffect(() => {
     if (authChecked && user) {
       fetchWishlist();

@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -87,45 +88,98 @@ class WishlistViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        if format_type == 'pdf':
-            buffer = BytesIO()
-            p = canvas.Canvas(buffer)
+        try:
+            if format_type == 'pdf':
+                buffer = BytesIO()
+                p = canvas.Canvas(buffer)
+                
+                p.setFont("Helvetica-Bold", 16)
+                p.drawString(100, 800, "Your Wishlist")
+                
+                p.setFont("Helvetica", 12)
+                y_position = 750
+                
+                for trip in trips:
+                    # Add trip title
+                    p.setFont("Helvetica-Bold", 14)
+                    p.drawString(100, y_position, f"- {trip.title}")
+                    y_position -= 20
+                    
+                    # Add author and date
+                    p.setFont("Helvetica", 12)
+                    p.drawString(120, y_position, f"Author: {trip.author.username}")
+                    p.drawString(120, y_position - 15, f"Date: {trip.created_at.strftime('%Y-%m-%d')}")
+                    y_position -= 30
+                    
+                    # Add full description with proper line wrapping
+                    text_object = p.beginText(120, y_position)
+                    text_object.setFont("Helvetica", 12)
+                    text_object.textLines(trip.description)
+                    p.drawText(text_object)
+                    
+                    # Calculate space used by description
+                    lines = len(trip.description) // 80 + 1
+                    y_position -= (lines * 15)
+                    
+                    # Add tags if they exist
+                    if trip.tags.exists():
+                        tags_text = ", ".join(trip.tags.names())
+                        p.drawString(120, y_position, f"Tags: {tags_text}")
+                        y_position -= 20
+                    
+                    # Add images count
+                    if trip.images.exists():
+                        p.drawString(120, y_position, f"Images: {trip.images.count()}")
+                        y_position -= 20
+                    
+                    # Add separator between trips
+                    y_position -= 30
+                    p.line(100, y_position, 500, y_position)
+                    y_position -= 30
+                    
+                    # Check for page break
+                    if y_position < 100:
+                        p.showPage()
+                        y_position = 750
+                        p.setFont("Helvetica-Bold", 16)
+                        p.drawString(100, 800, "Your Wishlist (continued)")
+                        p.setFont("Helvetica", 12)
+                
+                p.save()
+                buffer.seek(0)
+                response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="wishlist.pdf"'
+                return response
             
-            p.setFont("Helvetica-Bold", 16)
-            p.drawString(100, 800, "Your Wishlist")
+            elif format_type == 'txt':
+                content = "Your Wishlist:\n\n"
+                for trip in trips:
+                    content += f"- {trip.title}\n"
+                    content += f"  Author: {trip.author.username}\n"
+                    content += f"  Date: {trip.created_at.strftime('%Y-%m-%d')}\n"
+                    content += f"  Description:\n  {trip.description}\n"
+                    
+                    if trip.tags.exists():
+                        content += f"  Tags: {', '.join(trip.tags.names())}\n"
+                    
+                    if trip.images.exists():
+                        content += f"  Images: {trip.images.count()}\n"
+                    
+                    content += "\n"
+                
+                response = HttpResponse(content, content_type='text/plain')
+                response['Content-Disposition'] = 'attachment; filename="wishlist.txt"'
+                return response
             
-            p.setFont("Helvetica", 12)
-            y_position = 750
-            
-            for trip in trips:
-                p.drawString(100, y_position, f"- {trip.title}")
-                p.drawString(120, y_position - 15, f"Author: {trip.author.username}")
-                p.drawString(120, y_position - 30, f"Date: {trip.created_at.strftime('%Y-%m-%d')}")
-                p.drawString(120, y_position - 45, f"Description: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}")
-                y_position -= 70
-            
-            p.save()
-            buffer.seek(0)
-            response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-            response['Content-Disposition'] = 'attachment; filename="wishlist.pdf"'
-            return response
-        
-        elif format_type == 'txt':
-            content = "Your Wishlist:\n\n"
-            for trip in trips:
-                content += f"- {trip.title}\n"
-                content += f"  Author: {trip.author.username}\n"
-                content += f"  Date: {trip.created_at.strftime('%Y-%m-%d')}\n"
-                content += f"  Description: {trip.description[:100]}{'...' if len(trip.description) > 100 else ''}\n\n"
-            
-            response = HttpResponse(content, content_type='text/plain')
-            response['Content-Disposition'] = 'attachment; filename="wishlist.txt"'
-            return response
-        
-        return Response(
-            {"detail": "Unsupported format"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+            return Response(
+                {"detail": "Unsupported format"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Error generating file: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
 class SubscriptionTripViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TripSerializer

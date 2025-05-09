@@ -42,7 +42,18 @@ export const getSubscribers = (userId) => {
 export const login = (credentials) => api.post('auth/token/login/', credentials);
 export const registerUser = (data) => api.post('auth/users/', data);
 export const logout = () => api.post('auth/token/logout/');
-export const getTrips = (params = {}) => api.get('trips/', { params });
+export const getTrips = (params = {}) => {
+  // Если есть поиск по тегам, добавляем их в параметры
+  if (params.tags) {
+    return api.get('trips/', { 
+      params: {
+        ...params,
+        tags: Array.isArray(params.tags) ? params.tags.join(',') : params.tags
+      }
+    });
+  }
+  return api.get('trips/', { params });
+};
 export const getTrip = (id) => api.get(`trips/${id}/`);
 export const createTrip = (data) => {
   const formData = new FormData();

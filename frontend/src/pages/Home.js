@@ -9,7 +9,8 @@ import {
   Button,
   Paper,
   TextField,
-  Chip
+  Chip,
+  Divider
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { getTrips, getWishlist } from '../api';
@@ -20,6 +21,7 @@ import CreateTripForm from '../components/CreateTripForm';
 export default function Home() {
   const { user, authChecked } = useAuth();
   const [trips, setTrips] = useState([]);
+  const [filteredTrips, setFilteredTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -36,7 +38,6 @@ export default function Home() {
       const params = { 
         page,
         search: searchTerm,
-        tags: selectedTags.join(',')
       };
       
       const response = await getTrips(params);
@@ -61,8 +62,10 @@ export default function Home() {
         }));
         
         setTrips(enhancedTrips);
+        filterTrips(enhancedTrips, selectedTags);
       } else {
         setTrips(tripsData);
+        filterTrips(tripsData, selectedTags);
       }
       
       const totalCount = response.data.count || response.data.length;
@@ -70,16 +73,38 @@ export default function Home() {
     } catch (error) {
       console.error('Ошибка при загрузке путешествий:', error);
       setTrips([]);
+      setFilteredTrips([]);
     } finally {
       setLoading(false);
     }
-  }, [page, refreshTrigger, user, searchTerm, selectedTags]);
+  }, [page, refreshTrigger, user, searchTerm]);
+
+  const filterTrips = (tripsList, tags) => {
+    if (tags.length === 0) {
+      setFilteredTrips(tripsList);
+      return;
+    }
+
+    const filtered = tripsList.filter(trip => 
+      tags.some(tag => trip.tags.includes(tag))
+    );
+    
+    const rest = tripsList.filter(trip => 
+      !tags.some(tag => trip.tags.includes(tag))
+    );
+
+    setFilteredTrips([...filtered, ...rest]);
+  };
 
   useEffect(() => {
     if (authChecked) {
       fetchTrips();
     }
   }, [page, authChecked, fetchTrips]);
+
+  useEffect(() => {
+    filterTrips(trips, selectedTags);
+  }, [selectedTags, trips]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
@@ -102,6 +127,12 @@ export default function Home() {
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
+    setPage(1);
+  };
+
+  const handleTagSearch = (tag) => {
+    setSearchTerm(tag);
+    handleTagToggle(tag);
     setPage(1);
   };
 
@@ -133,7 +164,7 @@ export default function Home() {
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Поиск по названию или описанию..."
+          placeholder="Поиск по названию, описанию или тегам..."
           value={searchTerm}
           onChange={handleSearch}
         />
@@ -145,11 +176,30 @@ export default function Home() {
               label={tag}
               clickable
               color={selectedTags.includes(tag) ? 'primary' : 'default'}
-              onClick={() => handleTagToggle(tag)}
+              onClick={() => handleTagSearch(tag)}
             />
           ))}
         </Box>
       </Box>
+
+      {selectedTags.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Выбранные теги:
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {selectedTags.map(tag => (
+              <Chip
+                key={tag}
+                label={tag}
+                onDelete={() => handleTagToggle(tag)}
+                color="primary"
+              />
+            ))}
+          </Box>
+          <Divider sx={{ my: 2 }} />
+        </Box>
+      )}
 
       {user && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
@@ -198,8 +248,8 @@ export default function Home() {
       ) : (
         <>
           <Grid container spacing={4}>
-            {trips.length > 0 ? (
-              trips.map(trip => (
+            {filteredTrips.length > 0 ? (
+              filteredTrips.map(trip => (
                 <Grid item xs={12} sm={6} md={4} key={trip.id}>
                   <TripCard 
                     trip={trip} 

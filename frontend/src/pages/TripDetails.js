@@ -216,9 +216,9 @@ export default function TripDetails() {
             ))}
           </Box>
           
-          <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem' }}>
+          <pre>
             {trip.description}
-          </Typography>
+          </pre>
           
           <Box sx={{ display: 'flex', alignItems: 'center', mt: 4, mb: 2 }}>
             <Avatar 

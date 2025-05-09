@@ -101,6 +101,7 @@ export default function Profile() {
 
         // Получаем посты пользователя
         const tripsResponse = await getTripsByUser(userResponse.data.id);
+        console.log(tripsResponse, 'трипы трипы')
         setUserTrips(tripsResponse.data);
 
         // Получаем подписчиков и подписки

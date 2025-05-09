@@ -17,6 +17,19 @@ class TripViewSet(viewsets.ModelViewSet):
     serializer_class = TripSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        author_id = self.request.query_params.get('author')
+        
+        if author_id:
+            try:
+                author_id = int(author_id)
+                queryset = queryset.filter(author__id=author_id)
+            except (ValueError, TypeError):
+                pass
+                
+        return queryset
+
     def perform_create(self, serializer):
         tags = self.request.data.getlist('tags')
         images = self.request.FILES.getlist('images')

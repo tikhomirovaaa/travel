@@ -11,11 +11,16 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.all()
     serializer_class = UserProfileSerializer
     lookup_field = 'username'
-    
+
     def get_queryset(self):
-        return User.objects.all()
+        queryset = super().get_queryset()
+        username = self.request.query_params.get('username')
+        if username:
+            return queryset.filter(username=username)
+        return queryset
     
     @action(detail=False, methods=['get', 'put'], permission_classes=[IsAuthenticated])
     def me(self, request):

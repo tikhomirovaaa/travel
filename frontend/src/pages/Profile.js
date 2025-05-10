@@ -31,6 +31,7 @@ import {
   subscribeToUser, 
   unsubscribeFromUser, 
   getCurrentUser,
+  getUser,
   getTripsByUser,
   getSubscribers,
   getSubscriptions
@@ -84,30 +85,29 @@ export default function Profile() {
         setError(null);
 
         // Получаем данные пользователя
-        const userResponse = await getCurrentUser();
-        if (userResponse.data.username !== username) {
-          navigate('/profile/' + userResponse.data.username);
-          return;
-        }
+        let userResponse = await getUser(username);
+        const userData = userResponse.data[0];
+        const myProfile = await getCurrentUser();
+        setUser(myProfile.data)
 
-        setProfileUser(userResponse.data);
+        setProfileUser(userData);
         setEditData({
-          username: userResponse.data.username,
-          bio: userResponse.data.bio || ''
+          username: userData.username,
+          bio: userData.bio || ''
         });
-        setAvatarPreview(userResponse.data.avatar 
-          ? `${userResponse.data.avatar}` 
+        setAvatarPreview(userData.avatar 
+          ? `${userData.avatar}` 
           : '');
 
         // Получаем посты пользователя
-        const tripsResponse = await getTripsByUser(userResponse.data.id);
+        const tripsResponse = await getTripsByUser(userData.id);
         console.log(tripsResponse, 'трипы трипы')
         setUserTrips(tripsResponse.data);
 
         // Получаем подписчиков и подписки
         const [subsResponse, subscrResponse] = await Promise.all([
-          getSubscribers(userResponse.data.id),
-          getSubscriptions(userResponse.data.id)
+          getSubscribers(userData.id),
+          getSubscriptions(userData.id)
         ]);
         
         setSubscribers(subsResponse.data || []);
@@ -251,13 +251,13 @@ export default function Profile() {
             <Typography variant="h3" component="h1">
               {profileUser.username}
             </Typography>
-            <IconButton onClick={() => setOpenEdit(true)}>
+            {username === currentUser.username && <IconButton onClick={() => setOpenEdit(true)}>
               <Edit />
-            </IconButton>
+            </IconButton> }
           </Box>
           
           <Typography variant="body1" sx={{ mt: 1 }}>
-            {profileUser.bio || 'Расскажите о себе...'}
+            {profileUser.bio || (username === currentUser.username && 'Расскажите о себе...')}
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
@@ -272,14 +272,14 @@ export default function Profile() {
             </Typography>
           </Box>
           
-          <Button 
+          {username === currentUser.username && <Button 
             variant="outlined" 
             color="error"
             sx={{ mt: 2 }}
             onClick={logout}
           >
             Выйти
-          </Button>
+          </Button>}
         </Box>
       </Box>
       

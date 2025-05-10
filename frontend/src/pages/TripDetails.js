@@ -147,7 +147,6 @@ export default function TripDetails() {
         window.location.href = '/login';
         return;
       }
-      
       if (isSubscribed) {
         await unsubscribeFromUser(trip.author.id);
       } else {

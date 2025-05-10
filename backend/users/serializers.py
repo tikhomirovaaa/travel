@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User, Subscription
 from django.contrib.auth import get_user_model
+from .models import Achievement, UserAchievement
 
 User = get_user_model()
 
@@ -52,3 +53,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = ['id', 'target_user', 'created_at']
         read_only_fields = ['created_at']
+
+
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
+        fields = ['id', 'name', 'description', 'icon', 'criteria']
+
+class UserAchievementSerializer(serializers.ModelSerializer):
+    achievement = AchievementSerializer(read_only=True)
+    
+    class Meta:
+        model = UserAchievement
+        fields = ['id', 'achievement', 'date_achieved']

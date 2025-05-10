@@ -1,13 +1,26 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Button, 
+  Container,
+  IconButton,
+  Tooltip,
+  Box
+} from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import CreateTripForm from './CreateTripForm';
-import { AccountCircle } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext'; // Добавляем импорт useAuth
+import { 
+  AccountCircle, 
+  Brightness4, 
+  Brightness7 
+} from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
 
-export default function Header() {
+export default function Header({ darkMode, toggleDarkMode }) {
   const navigate = useNavigate();
-  const { user } = useAuth(); // Получаем user из контекста
+  const { user } = useAuth();
   const [openCreateTrip, setOpenCreateTrip] = useState(false);
 
   const handleLogout = () => {
@@ -24,48 +37,110 @@ export default function Header() {
 
   return (
     <>
-      <AppBar position="static">
+      <AppBar position="static" elevation={0}>
         <Container maxWidth="xl">
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              <Link to="/" onClick={handleLogoClick} style={{ color: 'white', textDecoration: 'none' }}>
+          <Toolbar disableGutters>
+            <Typography 
+              variant="h6" 
+              component="div" 
+              sx={{ 
+                flexGrow: 1,
+                fontWeight: 700,
+                letterSpacing: 1
+              }}
+            >
+              <Link 
+                to="/" 
+                onClick={handleLogoClick} 
+                style={{ 
+                  color: 'inherit', 
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
                 TravelImpressions
               </Link>
             </Typography>
             
-            {token ? (
-              <>
-                <Button color="inherit" onClick={() => setOpenCreateTrip(true)}>
-                  Создать пост
-                </Button>
-                <Button color="inherit" component={Link} to="/wishlist">
-                  Избранное
-                </Button>
-                <Button color="inherit" component={Link} to="/subscriptions">
-                  Подписки
-                </Button>
-                <Button 
-                  color="inherit" 
-                  component={Link} 
-                  to={`/profile/${user?.username}`}
-                  startIcon={<AccountCircle />}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <Tooltip title={darkMode ? 'Светлая тема' : 'Темная тема'}>
+                <IconButton 
+                  onClick={toggleDarkMode} 
+                  color="inherit"
+                  sx={{ ml: 1 }}
                 >
-                  Профиль
-                </Button>
-                <Button color="inherit" onClick={handleLogout}>
-                  Выйти
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button color="inherit" component={Link} to="/login">
-                  Вход
-                </Button>
-                <Button color="inherit" component={Link} to="/register">
-                  Регистрация
-                </Button>
-              </>
-            )}
+                  {darkMode ? <Brightness7 /> : <Brightness4 />}
+                </IconButton>
+              </Tooltip>
+              
+              {token ? (
+                <>
+                  <Button 
+                    color="inherit" 
+                    onClick={() => setOpenCreateTrip(true)}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Создать пост
+                  </Button>
+                  <Button 
+                    color="inherit" 
+                    component={Link} 
+                    to="/wishlist"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Избранное
+                  </Button>
+                  <Button 
+                    color="inherit" 
+                    component={Link} 
+                    to="/subscriptions"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Подписки
+                  </Button>
+                  <Button 
+                    color="inherit" 
+                    component={Link} 
+                    to={`/profile/${user?.username}`}
+                    startIcon={<AccountCircle />}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Профиль
+                  </Button>
+                  <Button 
+                    color="inherit" 
+                    onClick={handleLogout}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Выйти
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    color="inherit" 
+                    component={Link} 
+                    to="/login"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Вход
+                  </Button>
+                  <Button 
+                    color="inherit" 
+                    component={Link} 
+                    to="/register"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Регистрация
+                  </Button>
+                </>
+              )}
+            </Box>
           </Toolbar>
         </Container>
       </AppBar>

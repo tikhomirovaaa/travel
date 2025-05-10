@@ -34,6 +34,13 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['get'])
+    def achievements(self, request, pk=None):
+        user = self.get_object()
+        achievements = UserAchievement.objects.filter(user=user).select_related('achievement')
+        serializer = UserAchievementSerializer(achievements, many=True)
+        return Response(serializer.data)
+    
 class SubscriptionViewSet(viewsets.ModelViewSet):
     serializer_class = SubscriptionSerializer
     permission_classes = [IsAuthenticated]

@@ -11,9 +11,10 @@ import Subscriptions from './pages/Subscriptions';
 import WishList from './pages/WishList';
 import { AuthProvider } from './context/AuthContext';
 import { useState, useMemo } from 'react';
+import { getSavedTheme, saveTheme } from './utils/themeStorage';
 
 export default function App() {
-  const [mode, setMode] = useState('light');
+  const [mode, setMode] = useState(getSavedTheme());
 
   const theme = useMemo(() => createTheme({
     palette: {
@@ -48,7 +49,11 @@ export default function App() {
   }), [mode]);
 
   const toggleColorMode = () => {
-    setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
+    setMode((prevMode) => {
+      const newMode = prevMode === 'light' ? 'dark' : 'light';
+      saveTheme(newMode);
+      return newMode;
+    });
   };
 
   return (

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
+import { useTheme } from '@mui/material/styles';
 import { 
   Container, 
   Typography, 
@@ -12,7 +13,8 @@ import {
   CircularProgress,
   Tabs,
   Tab,
-  Box
+  Box,
+  Paper
 } from '@mui/material';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
@@ -21,6 +23,7 @@ import { unsubscribeFromUser } from '../api';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
+  const theme = useTheme();
 
   return (
     <div
@@ -40,6 +43,7 @@ function TabPanel(props) {
 }
 
 export default function Subscriptions() {
+  const theme = useTheme();
   const { user } = useContext(AuthContext);
   const [subscriptions, setSubscriptions] = useState([]);
   const [trips, setTrips] = useState([]);
@@ -113,44 +117,56 @@ export default function Subscriptions() {
               </Grid>
             ))
           ) : (
-            <Typography variant="h6" sx={{ mt: 4 }}>
-              {subscriptions.length === 0 
-                ? 'Вы ни на кого не подписаны' 
-                : 'Нет новых постов от ваших подписок'}
-            </Typography>
+            <Paper elevation={3} sx={{ 
+              p: 4, 
+              width: '100%', 
+              textAlign: 'center',
+              backgroundColor: theme.palette.background.paper
+            }}>
+              <Typography variant="h6">
+                {subscriptions.length === 0 
+                  ? 'Вы ни на кого не подписаны' 
+                  : 'Нет новых постов от ваших подписок'}
+              </Typography>
+            </Paper>
           )}
         </Grid>
       </TabPanel>
       
       <TabPanel value={tabValue} index={1}>
-        <List>
-          {subscriptions.length > 0 ? (
-            subscriptions.map(sub => (
-              <ListItem key={sub.id}>
-                <ListItemAvatar>
-                  <Avatar 
-                    src={sub.target_user.avatar && `http://localhost:8000${sub.target_user.avatar}`} 
+        <Paper elevation={3} sx={{ 
+          p: 2,
+          backgroundColor: theme.palette.background.paper 
+        }}>
+          <List>
+            {subscriptions.length > 0 ? (
+              subscriptions.map(sub => (
+                <ListItem key={sub.id}>
+                  <ListItemAvatar>
+                    <Avatar 
+                      src={sub.target_user.avatar && `http://localhost:8000${sub.target_user.avatar}`} 
+                    />
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={sub.target_user.username}
+                    secondary={`Подписан с ${new Date(sub.created_at).toLocaleDateString()}`}
                   />
-                </ListItemAvatar>
-                <ListItemText
-                  primary={sub.target_user.username}
-                  secondary={`Подписан с ${new Date(sub.created_at).toLocaleDateString()}`}
-                />
-                <Button 
-                  variant="outlined" 
-                  color="error"
-                  onClick={() => handleUnsubscribe(sub.id)}
-                >
-                  Отписаться
-                </Button>
-              </ListItem>
-            ))
-          ) : (
-            <Typography variant="h6" sx={{ mt: 4 }}>
-              Вы ни на кого не подписаны
-            </Typography>
-          )}
-        </List>
+                  <Button 
+                    variant="outlined" 
+                    color="error"
+                    onClick={() => handleUnsubscribe(sub.id)}
+                  >
+                    Отписаться
+                  </Button>
+                </ListItem>
+              ))
+            ) : (
+              <Typography variant="h6" sx={{ mt: 4, textAlign: 'center' }}>
+                Вы ни на кого не подписаны
+              </Typography>
+            )}
+          </List>
+        </Paper>
       </TabPanel>
     </Container>
   );

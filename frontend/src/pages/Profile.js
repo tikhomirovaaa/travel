@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 import { 
   Container, 
   Typography, 
@@ -58,6 +59,7 @@ function TabPanel(props) {
 }
 
 export default function Profile() {
+  const theme = useTheme();
   const { username } = useParams();
   const navigate = useNavigate();
   const { user: currentUser, setUser, logout } = useContext(AuthContext);
@@ -313,7 +315,8 @@ export default function Profile() {
       </TabPanel>
       
       <TabPanel value={tabValue} index={1}>
-        <Paper elevation={3} sx={{ p: 2 }}>
+        <Paper elevation={3} sx={{ p: 2, 
+  backgroundColor: theme.palette.background.paper }}>
           <List>
             {subscribers.length > 0 ? (
               subscribers.map(sub => (

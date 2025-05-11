@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useTheme } from '@mui/material/styles';
 import { 
   Container, 
   Typography,  
@@ -24,6 +25,7 @@ import { getWishlist, removeFromWishlist, downloadWishlist } from '../api';
 import { Bookmark } from '@mui/icons-material';
 
 export default function WishList() {
+  const theme = useTheme();
   const { user, authChecked } = useAuth();
   const [wishlist, setWishlist] = useState([]);
   const [selectedTrips, setSelectedTrips] = useState([]);
@@ -178,7 +180,8 @@ export default function WishList() {
           <Grid container spacing={4}>
             {wishlist.map(item => (
               <Grid item xs={12} sm={6} md={4} key={item.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column',
+  backgroundColor: theme.palette.background.paper }}>
                   <CardMedia
                     component={Link}
                     to={`/trips/${item.trip.id}`}

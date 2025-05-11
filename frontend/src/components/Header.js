@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Button, 
+  Container,
+  IconButton 
+} from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import CreateTripForm from './CreateTripForm';
 import { AccountCircle } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext'; // Добавляем импорт useAuth
+import { useAuth } from '../context/AuthContext';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 
-export default function Header() {
+export default function Header({ toggleColorMode, mode }) {
   const navigate = useNavigate();
-  const { user } = useAuth(); // Получаем user из контекста
+  const { user } = useAuth();
   const [openCreateTrip, setOpenCreateTrip] = useState(false);
 
   const handleLogout = () => {
@@ -32,6 +40,10 @@ export default function Header() {
                 TravelImpressions
               </Link>
             </Typography>
+            
+            <IconButton onClick={toggleColorMode} color="inherit" sx={{ mr: 2 }}>
+              {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+            </IconButton>
             
             {token ? (
               <>

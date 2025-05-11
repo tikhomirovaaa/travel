@@ -10,25 +10,53 @@ import Profile from './pages/Profile';
 import Subscriptions from './pages/Subscriptions';
 import WishList from './pages/WishList';
 import { AuthProvider } from './context/AuthContext';
+import { useState, useMemo } from 'react';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1e3a8a',
-    },
-    secondary: {
-      main: '#3b82f6',
-    },
-  },
-});
+export default function App() {
+  const [mode, setMode] = useState('light');
 
-function App() {
+  const theme = useMemo(() => createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: mode === 'light' ? '#1e3a8a' : '#3b82f6',
+      },
+      secondary: {
+        main: mode === 'light' ? '#3b82f6' : '#60a5fa',
+      },
+      background: {
+        default: mode === 'light' ? '#f8fafc' : '#0f172a',
+        paper: mode === 'light' ? '#ffffff' : '#1e293b',
+      },
+    },
+    components: {
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'light' ? '#1e3a8a' : '#1e293b',
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'light' ? '#ffffff' : '#1e293b',
+          },
+        },
+      },
+    },
+  }), [mode]);
+
+  const toggleColorMode = () => {
+    setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
         <Router>
-          <Header />
+          <Header toggleColorMode={toggleColorMode} mode={mode} />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
@@ -43,5 +71,3 @@ function App() {
     </ThemeProvider>
   );
 }
-
-export default App;

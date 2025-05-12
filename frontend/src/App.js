@@ -12,6 +12,7 @@ import WishList from './pages/WishList';
 import { AuthProvider } from './context/AuthContext';
 import { useState, useMemo } from 'react';
 import { getSavedTheme, saveTheme } from './utils/themeStorage';
+import { SubscriptionsProvider } from './context/subscriptions.context';
 
 export default function App() {
   const [mode, setMode] = useState(getSavedTheme());
@@ -58,20 +59,22 @@ export default function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
       <AuthProvider>
-        <Router>
-          <Header toggleColorMode={toggleColorMode} mode={mode} />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/trips/:id" element={<TripDetails />} />
-            <Route path="/profile/:username" element={<Profile />} />
-            <Route path="/subscriptions" element={<Subscriptions />} />
-            <Route path="/wishlist" element={<WishList />} />
-          </Routes>
-        </Router>
+        <SubscriptionsProvider>
+          <CssBaseline />
+          <Router>
+            <Header toggleColorMode={toggleColorMode} mode={mode} />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/trips/:id" element={<TripDetails />} />
+              <Route path="/profile/:username" element={<Profile />} />
+              <Route path="/subscriptions" element={<Subscriptions />} />
+              <Route path="/wishlist" element={<WishList />} />
+            </Routes>
+          </Router>
+        </SubscriptionsProvider>
       </AuthProvider>
     </ThemeProvider>
   );

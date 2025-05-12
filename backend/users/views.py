@@ -38,37 +38,50 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 serializer.save()
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        
 class SubscriptionViewSet(viewsets.ModelViewSet):
     serializer_class = SubscriptionSerializer
     permission_classes = [IsAuthenticated]
+    lookup_field = 'target_user_id'  # Изменяем lookup_field на target_user_id
 
     def get_queryset(self):
         return Subscription.objects.filter(subscriber=self.request.user)
 
-    def perform_create(self, serializer):
-        target_user_id = self.request.data.get('target_user')
+    def create(self, request, *args, **kwargs):
+        target_user_id = request.data.get('target_user')
         target_user = get_object_or_404(User, id=target_user_id)
         
-        if target_user.id == self.request.user.id:
-            raise serializers.ValidationError({"detail": "You cannot subscribe to yourself"})
-        
-        if Subscription.objects.filter(subscriber=self.request.user, target_user=target_user).exists():
-            raise serializers.ValidationError({"detail": "You are already subscribed to this user"})
-            
-        serializer.save(subscriber=self.request.user, target_user=target_user)
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            subscription = self.get_object()
-            if subscription.subscriber != request.user:
-                return Response(
-                    {"detail": "You can only unsubscribe from your own subscriptions"},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            return super().destroy(request, *args, **kwargs)
-        except Exception as e:
+        if target_user.id == request.user.id:
             return Response(
-                {"detail": str(e)},
+                {"detail": "You cannot subscribe to yourself"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        if Subscription.objects.filter(subscriber=request.user, target_user=target_user).exists():
+            return Response(
+                {"detail": "You are already subscribed to this user"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        subscription = Subscription.objects.create(
+            subscriber=request.user,
+            target_user=target_user
+        )
+        serializer = self.get_serializer(subscription)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        target_user_id = kwargs.get('target_user_id')
+        target_user = get_object_or_404(User, id=target_user_id)
+        
+        subscription = get_object_or_404(
+            Subscription,
+            subscriber=request.user,
+            target_user=target_user
+        )
+        
+        subscription.delete()
+        return Response(
+            {"detail": "Successfully unsubscribed"},
+            status=status.HTTP_204_NO_CONTENT
+        )

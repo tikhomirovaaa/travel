@@ -59,7 +59,7 @@ export default function WishList() {
 
   const handleRemoveFromWishlist = async (wishlistId, tripId) => {
     try {
-      await removeFromWishlist(wishlistId);
+      await removeFromWishlist(tripId);
       setWishlist(prev => prev.filter(item => item.id !== wishlistId));
       setSelectedTrips(prev => prev.filter(id => id !== tripId));
     } catch (err) {
@@ -186,10 +186,8 @@ export default function WishList() {
                     component={Link}
                     to={`/trips/${item.trip.id}`}
                     image={item.trip.main_image ? `http://localhost:8000${item.trip.main_image}` : '/placeholder.jpg'}
-                    height="200"
-                    sx={{ objectFit: 'cover' }}
+                    sx={{ objectFit: 'cover', height: "200px" }}
                   />
-                  
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Typography 
                       gutterBottom 

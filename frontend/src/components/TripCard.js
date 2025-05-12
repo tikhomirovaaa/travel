@@ -35,6 +35,7 @@ import {
   unsubscribeFromUser,
   getSubscriptionStatus
 } from '../api';
+import { useSubscriptions } from '../context/subscriptions.context';
 
 export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
   const { user } = useAuth();
@@ -44,14 +45,14 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
   const [commentText, setCommentText] = useState('');
   const [openComments, setOpenComments] = useState(false);
   const [inWishlist, setInWishlist] = useState(false);
-  const [wishlistId, setWishlistId] = useState(null);
   const [error, setError] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loadingSubscription, setLoadingSubscription] = useState(false);
-  const [subscriptionId, setSubscriptionId] = useState(null);
   const openMenu = Boolean(anchorEl);
+
+  const {subscriptions} = useSubscriptions();
 
   useEffect(() => {
     const checkInitialStatus = async () => {
@@ -62,13 +63,12 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
           // Check wishlist status
           const wishlistResponse = await checkWishlist(trip.id);
           setInWishlist(wishlistResponse.exists);
-          setWishlistId(wishlistResponse.id);
           
           // Check subscription status
           if (trip.author.id !== user.id) {
             const subId = await getSubscriptionStatus(user.id, trip.author.id);
+            console.log(subId.data[0].target_user.id)
             setIsSubscribed(!!subId);
-            setSubscriptionId(subId);
           }
         } catch (err) {
           console.error('Ошибка проверки статуса:', err);
@@ -131,13 +131,11 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
       setLoadingWishlist(true);
       
       if (inWishlist) {
-        await removeFromWishlist(wishlistId);
+        await removeFromWishlist(trip.id);
         setInWishlist(false);
-        setWishlistId(null);
       } else {
         const response = await addToWishlist(trip.id);
         setInWishlist(true);
-        setWishlistId(response.data.id);
       }
     } catch (error) {
       console.error('Ошибка:', error.response?.data);
@@ -155,15 +153,13 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
       }
       
       setLoadingSubscription(true);
-      
+
       if (isSubscribed) {
-        await unsubscribeFromUser(subscriptionId);
+        await unsubscribeFromUser(trip.author.id);
         setIsSubscribed(false);
-        setSubscriptionId(null);
       } else {
-        const response = await subscribeToUser(trip.author.id);
+        await subscribeToUser(trip.author.id);
         setIsSubscribed(true);
-        setSubscriptionId(response.data.id);
       }
       
       if (onSubscriptionChange) {
@@ -240,6 +236,7 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
           }}
         >
           {trip.title}
+          {subscriptions}
         </Typography>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

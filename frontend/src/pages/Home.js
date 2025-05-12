@@ -17,6 +17,7 @@ import { getTrips, getWishlist } from '../api';
 import TripCard from '../components/TripCard';
 import { useAuth } from '../context/AuthContext';
 import CreateTripForm from '../components/CreateTripForm';
+import { useSubscriptions } from '../context/subscriptions.context';
 
 export default function Home() {
   const { user, authChecked } = useAuth();
@@ -31,6 +32,8 @@ export default function Home() {
   const [selectedTags, setSelectedTags] = useState([]);
   const [availableTags, setAvailableTags] = useState([]);
   const tripsPerPage = 6;
+
+    const { subscriptions, fetchSubscriptions } = useSubscriptions();
 
   const fetchTrips = useCallback(async () => {
     try {

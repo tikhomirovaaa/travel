@@ -26,10 +26,14 @@ api.interceptors.response.use(
 );
 
 // Подписки
-export const subscribeToUser = (userId) => api.post('subscriptions/', { target_user: userId });
-export const unsubscribeFromUser = (subscriptionId) => api.delete(`subscriptions/${subscriptionId}/`);
-export const getSubscriptionStatus = (subscriberId, targetUserId) => 
-  api.get(`subscriptions/?subscriber=${subscriberId}&target_user=${targetUserId}`);
+export const subscribeToUser = (targetUserId) => 
+  api.post('subscriptions/', { target_user: targetUserId });
+
+export const unsubscribeFromUser = (targetUserId) => 
+  api.delete(`subscriptions/${targetUserId}/`);
+
+export const getSubscriptionStatus = (targetUserId) => 
+  api.get(`subscriptions/?target_user=${targetUserId}`);
 
 export const getSubscriptions = (userId) => {
   return api.get(`subscriptions/?subscriber=${userId}`);
@@ -117,7 +121,7 @@ export const checkWishlist = async (tripId) => {
 };
 
 export const addToWishlist = (tripId) => api.post('wishlist/', { trip_id: tripId });
-export const removeFromWishlist = (id) => api.delete(`wishlist/${id}/`);
+export const removeFromWishlist = (tripId) => api.delete(`wishlist/${tripId}/`);
 export const downloadWishlist = (tripIds, format) => {
   return api.post('wishlist/download/', 
     { trip_ids: tripIds, format },

@@ -76,10 +76,14 @@ export default function Subscriptions() {
     fetchData();
   }, [user]);
 
+  useEffect(() => {
+
+  }, [])
+
   const handleUnsubscribe = async (subscriptionId) => {
     try {
       await unsubscribeFromUser(subscriptionId);
-      setSubscriptions(prev => prev.filter(sub => sub.id !== subscriptionId));
+      setSubscriptions(prev => prev.filter(sub => sub.target_user.id !== subscriptionId));
       
       // Обновляем ленту
       const tripsRes = await axios.get('http://localhost:8000/api/subscription-trips/', {
@@ -144,7 +148,7 @@ export default function Subscriptions() {
                 <ListItem key={sub.id}>
                   <ListItemAvatar>
                     <Avatar 
-                      src={sub.target_user.avatar && `http://localhost:8000${sub.target_user.avatar}`} 
+                      src={sub.target_user.avatar && `${sub.target_user.avatar}`} 
                     />
                   </ListItemAvatar>
                   <ListItemText
@@ -154,7 +158,7 @@ export default function Subscriptions() {
                   <Button 
                     variant="outlined" 
                     color="error"
-                    onClick={() => handleUnsubscribe(sub.id)}
+                    onClick={() => handleUnsubscribe(sub.target_user.id)}
                   >
                     Отписаться
                   </Button>

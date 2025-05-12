@@ -44,7 +44,6 @@ export default function TripDetails() {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [inWishlist, setInWishlist] = useState(false);
-  const [wishlistId, setWishlistId] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
@@ -61,7 +60,6 @@ export default function TripDetails() {
           try {
             const wishlistResponse = await checkWishlist(response.data.id);
             setInWishlist(wishlistResponse.exists);
-            setWishlistId(wishlistResponse.id);
             
             if (response.data.author.id !== user.id) {
               const subResponse = await axios.get(`http://localhost:8000/api/subscriptions/?subscriber=${user.id}&target_user=${response.data.author.id}`);
@@ -126,13 +124,11 @@ export default function TripDetails() {
       setLoadingWishlist(true);
       
       if (inWishlist) {
-        await removeFromWishlist(wishlistId);
+        await removeFromWishlist(trip.id);
         setInWishlist(false);
-        setWishlistId(null);
       } else {
         const response = await addToWishlist(trip.id);
         setInWishlist(true);
-        setWishlistId(response.data.id);
       }
     } catch (error) {
       console.error('Ошибка избранного:', error);
@@ -141,16 +137,16 @@ export default function TripDetails() {
     }
   };
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (authorId) => {
     try {
       if (!user) {
         window.location.href = '/login';
         return;
       }
       if (isSubscribed) {
-        await unsubscribeFromUser(trip.author.id);
+        await unsubscribeFromUser(authorId);
       } else {
-        await subscribeToUser(trip.author.id);
+        await subscribeToUser(authorId);
       }
       setIsSubscribed(!isSubscribed);
     } catch (error) {
@@ -236,7 +232,7 @@ export default function TripDetails() {
             {user && user.id !== trip.author.id && (
               <Button 
                 variant={isSubscribed ? "outlined" : "contained"}
-                onClick={handleSubscribe}
+                onClick={() => handleSubscribe(trip.author.id)}
                 sx={{ ml: 'auto' }}
               >
                 {isSubscribed ? 'Отписаться' : 'Подписаться'}

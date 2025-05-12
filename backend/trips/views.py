@@ -81,6 +81,24 @@ class WishlistViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    def destroy(self, request, *args, **kwargs):
+        try:
+            trip_id = kwargs.get('pk')  # Получаем trip_id из URL
+            wishlist_item = get_object_or_404(
+                Wishlist,
+                user=request.user,
+                trip_id=trip_id
+            )
+            wishlist_item.delete()
+            return Response(
+                {"detail": "Successfully removed from wishlist"},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['post'])
     def download(self, request):

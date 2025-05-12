@@ -174,8 +174,6 @@ export default function TripDetails() {
     );
   }
 
-  console.log(trip)
-
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Card>

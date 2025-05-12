@@ -247,7 +247,7 @@ export default function Home() {
         </Box>
       ) : (
         <>
-          <Grid container spacing={4}>
+          <Grid sx={{justifyContent: 'center'}} container spacing={4}>
             {filteredTrips.length > 0 ? (
               filteredTrips.map(trip => (
                 <Grid item xs={12} sm={6} md={4} key={trip.id}>

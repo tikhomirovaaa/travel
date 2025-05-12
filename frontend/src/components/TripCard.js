@@ -195,7 +195,7 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
   };
 
   return (
-    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Card sx={{ width: '350px', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ position: 'relative' }}>
         <CardMedia
           component={Link}
@@ -258,7 +258,7 @@ export default function TripCard({ trip, onDelete, onSubscriptionChange }) {
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <Avatar 
-            src={trip.author.avatar ? `http://localhost:8000${trip.author.avatar}` : ''} 
+            src={trip.author.avatar ? `${trip.author.avatar}` : ''} 
             sx={{ width: 24, height: 24 }}
             component={Link}
             to={`/profile/${trip.author.username}`}
